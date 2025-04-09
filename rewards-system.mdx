@@ -1,0 +1,204 @@
+---
+title: "Rewards System"
+description: "The SVYP rewards system allows brands to offer incentives to users who complete a card stack voting session. When users finish swiping through all ..."
+---
+
+# SVYP Rewards System
+
+## Overview
+
+The SVYP rewards system allows brands to offer incentives to users who complete a card stack voting session. When users finish swiping through all product cards, they're presented with an opportunity to claim a reward by providing their email address. The system then randomly selects an available reward from the brand's reward pool and sends it to the user via email.
+
+## Reward Structure
+
+Each reward in the system has the following properties:
+
+- **Associated Brand**: Links the reward to a specific brand
+- **Reward Name**: The title of the reward (e.g., "10% Discount")
+- **Reward Description**: Detailed information about the reward
+- **Reward Code**: Unique code that users can redeem (e.g., "SUMMER10")
+- **Max Number of Uses**: Controls how many times a reward can be awarded
+  - A value of 0 means unlimited uses
+- **Number of Uses**: Tracks how many times the reward has been awarded
+
+## Admin Management
+
+Administrators can manage rewards through the admin interface at `/admin/rewards`. The interface provides the following capabilities:
+
+1. **Creating Rewards**:
+
+   - Assign to a specific brand
+   - Set a name and description
+   - Enter a reward code
+   - Set usage limits (0 for unlimited)
+
+2. **Editing Rewards**:
+
+   - Modify any reward properties
+   - Update usage limits
+   - Change reward codes
+
+3. **Deleting Rewards**:
+
+   - Remove rewards that are no longer needed
+
+4. **Filtering and Viewing**:
+   - Filter rewards by brand
+   - See which rewards are available vs. depleted
+   - Track usage statistics
+
+## User Flow
+
+1. **Card Stack Completion**:
+
+   - User swipes through all product cards in a campaign
+   - Upon completion, the reward card appears
+
+2. **Email Collection**:
+
+   - User is prompted to enter their email address
+   - System validates the email format
+   - User sees a loading spinner while their reward is being processed
+
+3. **Reward Selection**:
+
+   - System checks if the brand has available rewards
+   - If available, a random reward is selected from the pool
+   - The reward's usage count is incremented
+
+4. **Email Delivery**:
+
+   - Selected reward is sent to the user's email
+   - Email includes the reward name, description, and code
+   - Branded with the campaign/brand information
+   - Includes personalized product recommendations based on user likes (up to 3 products)
+   - Product recommendations feature direct affiliate links with "Shop Now" buttons
+   - User sees a loading indicator while the email is being sent
+
+5. **Confirmation**:
+   - User sees a confirmation message that the reward has been sent
+   - Option to view a summary of their product preferences
+
+## Handling No Available Rewards
+
+When all rewards for a brand have reached their maximum usage limit:
+
+1. The system detects this condition when the user loads the card stack
+2. After completing the stack, users see a message explaining that all rewards have been claimed
+3. Their email can still be collected for marketing purposes or future rewards
+
+## Technical Implementation
+
+The rewards system consists of several components:
+
+1. **Data Storage**:
+
+   - Rewards are stored in the Firebase Firestore `rewards` collection
+   - Each reward document contains all necessary fields and metadata
+
+2. **API Endpoint**:
+
+   - `/api/rewards/send-email` handles reward selection and email sending
+   - Validates inputs, selects a random reward, and updates usage counts
+   - Uses Postmark for reliable email delivery
+   - Processes user-liked products for personalized recommendations
+   - Supports affiliate link integration for product recommendations
+
+3. **Client Components**:
+
+   - `RewardCard.tsx` displays the reward UI, email collection form, and loading states
+   - `SwipeContainer.tsx` manages the overall card stack, reward flow, loading states, and tracks user preferences
+   - User product likes are captured and passed to the reward email system
+   - Loading states provide visual feedback during asynchronous operations
+
+4. **Utility Functions**:
+   - `rewards.ts` provides helper functions for reward operations
+   - `firebase.ts` includes database operations for rewards
+   - `emailTemplates.ts` contains HTML and text templates for reward emails with personalized product recommendations
+
+## Analytics Integration
+
+The rewards system includes comprehensive Mixpanel tracking to monitor user engagement and reward effectiveness:
+
+1. **Tracked Events**:
+
+   - `Reward Shown`: When a user reaches the end of the card stack and sees the reward card
+   - `Reward Claimed`: When a user submits their email to claim a reward
+   - `Reward Sent`: When a reward is successfully sent to the user's email
+   - `No Rewards Available`: When a user attempts to claim a reward but none are available
+
+2. **Event Properties**:
+
+   - Reward details (ID, name, code)
+   - Campaign information (ID, name, slug)
+   - Brand information (ID, name, slug)
+   - User email
+   - Timestamp
+
+3. **Analytics Benefits**:
+
+   - Track reward claim rates
+   - Monitor which rewards are most popular
+   - Identify campaigns with high reward engagement
+   - Detect when reward pools are depleted
+   - Measure the effectiveness of different reward types
+
+4. **Implementation**:
+   - Analytics functions are defined in `utils/analytics.ts`
+   - Tracking is integrated at key points in the reward flow
+   - Events follow a consistent naming convention for easy querying
+
+## Email Delivery with Postmark
+
+The system uses Postmark for reliable email delivery of rewards:
+
+1. **Configuration**:
+
+   - Requires `POSTMARK_API_TOKEN` and `POSTMARK_FROM_EMAIL` environment variables
+   - Uses the Postmark Node.js client library
+
+2. **Email Templates**:
+
+   - HTML template with responsive design
+   - Plain text fallback for email clients that don't support HTML
+   - Includes reward details, branding, and redemption code
+   - Features a "Products You Might Like" section with up to 3 products the user has liked
+   - Each product includes a "Shop Now" button linking to its affiliate URL
+   - Limited to 3 products for optimal email layout and loading performance
+
+3. **Implementation**:
+
+   - Email sending logic is in the `/api/rewards/send-email` route
+   - Templates are extracted to `utils/emailTemplates.ts` for maintainability
+   - Includes error handling and logging with Postmark's MessageID
+
+4. **Benefits**:
+   - High deliverability rates
+   - Email analytics and tracking
+   - Reliable service with delivery guarantees
+   - Professional email templates
+
+## Security Considerations
+
+- Only authenticated admins can create, edit, or delete rewards
+- Brand-specific admins can only see, filter, and manage rewards for their assigned brands
+- When creating rewards, brand-specific admins can only select from their associated brands
+- Super admins have access to all rewards across all brands
+
+## Future Enhancements
+
+Potential improvements to the rewards system could include:
+
+1. **Waitlist System**: When no rewards are available, add users to a waitlist for future rewards
+2. **Scheduled Rewards**: Set start and end dates for reward availability
+3. **Reward Categories**: Group rewards by type or value
+4. **Enhanced Analytics**: Track affiliate link click-through and conversion rates
+5. **User Profiles**: Allow users to view their claimed rewards in a profile section
+6. **A/B Testing**: Test different email layouts and product recommendation strategies
+7. **Recommendation Algorithm**: Implement more sophisticated product recommendation logic beyond user likes
+8. **Enhanced Loading States**: Add more detailed progress indicators showing each step of the reward process
+9. **Offline Support**: Allow users to claim rewards even with intermittent connectivity
+
+---
+
+This document provides an overview of the SVYP rewards system. For technical details, refer to the implementation files in the codebase.

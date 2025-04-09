@@ -1,0 +1,107 @@
+---
+title: "Campaign Management"
+description: "This document outlines the implementation of campaign management features in the SVYP application. Campaigns serve as containers for products, allo..."
+---
+
+# Campaign Management Implementation
+
+## Overview
+
+This document outlines the implementation of campaign management features in the SVYP application. Campaigns serve as containers for products, allowing for targeted marketing and promotional activities. Each campaign has a unique URL (slug) and can contain multiple products.
+
+## Features Implemented
+
+### Data Structure
+
+- **Campaign Type**: Created a `Campaign` interface in `src/types/campaign.ts` with the following properties:
+  - `id`: Unique identifier
+  - `name`: Campaign name
+  - `slug`: URL-friendly unique identifier for the campaign
+  - `productIds`: Array of product IDs associated with the campaign
+  - `createdAt`: Timestamp for creation date
+  - `updatedAt`: Timestamp for last update
+
+### Firebase Integration
+
+- **Campaign Collection**: Added a new collection in Firebase Firestore to store campaign data
+- **CRUD Operations**: Implemented the following functions in `src/utils/firebase.ts`:
+  - `fetchCampaigns()`: Retrieve all campaigns
+  - `fetchCampaignBySlug(slug)`: Find a campaign by its URL slug
+  - `fetchCampaignById(id)`: Find a campaign by its ID
+  - `fetchProductsForCampaign(campaignId)`: Get all products associated with a campaign
+  - `createCampaign(campaign)`: Create a new campaign with slug uniqueness validation
+  - `updateCampaign(id, campaign)`: Update an existing campaign with slug uniqueness validation
+  - `deleteCampaign(id)`: Remove a campaign
+
+### Admin Interface
+
+- **Campaign Management Page**: Created a new admin page at `src/app/admin/campaigns/page.tsx` for:
+  - Viewing all campaigns in a list
+  - Creating new campaigns with product selection
+  - Editing existing campaigns
+  - Deleting campaigns
+- **Admin Navigation**: Updated the main admin dashboard to include a link to the campaign management page
+
+### Frontend Display
+
+- **Dynamic Campaign Routes**: Implemented dynamic routing at `src/app/[slug]/page.tsx` to:
+  - Load campaign data based on the URL slug
+  - Display campaign-specific products using the SwipeContainer
+  - Show appropriate loading and error states
+
+### Component Updates
+
+- **SwipeContainer**: Updated to accept and utilize campaign information:
+  - Added campaign-related props (campaignId, campaignName, campaignSlug)
+  - Passed campaign context to child components
+- **ProductCard**: Enhanced to include campaign data in analytics events
+
+### Analytics Integration
+
+- **Campaign Tracking**: Updated analytics utility to include campaign information in all events:
+  - Added campaign fields (id, name, slug) to all product-related events
+  - Created a new `trackCampaignView` event for tracking campaign page visits
+
+## Firebase Setup Requirements
+
+To use the campaign management features, the following Firebase setup is required:
+
+1. **Firestore Collection**: Create a "campaigns" collection in Firestore
+2. **Security Rules**: Update Firestore security rules to protect campaign data:
+   ```
+   match /campaigns/{campaignId} {
+     allow read;
+     allow write: if request.auth != null && request.auth.uid != null;
+   }
+   ```
+3. **Indexes**: You may need to create an index on the `slug` field in the campaigns collection for efficient queries
+
+## Usage Flow
+
+1. **Admin Creates Campaign**:
+   - Admin navigates to the campaign management page
+   - Creates a new campaign with a unique slug
+   - Selects products to include in the campaign
+
+2. **Campaign URL Generation**:
+   - A unique URL is generated based on the campaign slug (e.g., `https://yourdomain.com/campaign-slug`)
+
+3. **User Interaction**:
+   - Users visit the campaign URL
+   - They see only the products associated with that campaign
+   - All user interactions (views, likes, dislikes) are tracked with campaign context
+
+## Future Enhancements
+
+- Campaign analytics dashboard
+- Campaign scheduling (start/end dates)
+- Campaign-specific styling and branding
+- A/B testing capabilities
+- Campaign performance metrics
+
+## Technical Considerations
+
+- Campaign slugs must be unique across the application
+- Products can belong to multiple campaigns
+- Campaign data is included in all analytics events for better tracking
+- The dynamic routing system allows for SEO-friendly campaign URLs

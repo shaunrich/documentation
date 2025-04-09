@@ -1,0 +1,206 @@
+---
+title: "User Management"
+description: "This document provides a comprehensive guide to user management in the SVYP platform. It covers both end-user management and administrative user ma..."
+---
+
+# User Management Documentation
+
+## Overview
+
+This document provides a comprehensive guide to user management in the SVYP platform. It covers both end-user management and administrative user management, explaining the different user types, authentication methods, and management workflows.
+
+## User Types
+
+The SVYP platform supports two main categories of users:
+
+1. **End Users**
+   - Regular users who interact with the platform to view products, campaigns, and brands
+   - Can browse content without authentication
+   - Interactions (likes, dislikes) are tracked anonymously or with optional authentication
+
+2. **Admin Users**
+   - Manage the platform's content and settings
+   - Require authentication to access admin features
+   - Have role-based permissions (see [Admin User Roles](./admin-user-roles.md) for details)
+
+## Authentication Methods
+
+### End User Authentication
+
+End users can interact with the platform in two ways:
+
+1. **Anonymous Browsing**
+   - No authentication required
+   - Limited tracking via browser cookies
+   - Basic analytics data collected
+
+2. **Optional Authentication**
+   - Users can create accounts for enhanced features
+   - Authentication handled through Firebase Authentication
+   - Supports email/password and social login options
+
+### Admin Authentication
+
+Admin users must authenticate to access the admin dashboard:
+
+1. **Email/Password Authentication**
+   - Primary authentication method for admin users
+   - Credentials stored securely in Firebase Authentication
+   - Session-based authentication with secure cookies
+
+2. **Multi-factor Authentication (MFA)**
+   - Optional additional security layer
+   - Can be enabled per admin user
+   - Supports SMS and authenticator app verification
+
+## User Data Structure
+
+### End User Data
+
+```typescript
+interface EndUser {
+  uid: string;         // Unique identifier
+  email?: string;      // Optional email address
+  displayName?: string;// Optional display name
+  createdAt: number;   // Timestamp of account creation
+  lastLoginAt?: number;// Timestamp of last login
+  preferences?: {      // User preferences
+    notifications: boolean;
+    theme: 'light' | 'dark' | 'system';
+  };
+}
+```
+
+### Admin User Data
+
+```typescript
+interface AdminUser {
+  uid: string;         // Unique identifier
+  email: string;       // Email address (required)
+  displayName?: string;// Optional display name
+  createdAt?: number;  // Timestamp of account creation
+  lastLoginAt?: number;// Timestamp of last login
+  disabled?: boolean;  // Whether the account is disabled
+  role?: 'super-admin' | 'admin'; // User role
+}
+```
+
+## User Management Workflows
+
+### End User Management
+
+1. **User Registration**
+   - Users can register through the platform's sign-up form
+   - Required fields: email, password
+   - Optional fields: display name
+   - Verification email sent upon registration
+
+2. **User Profile Management**
+   - Users can update their profile information
+   - Change password functionality
+   - Update notification preferences
+   - Delete account option
+
+3. **User Activity Tracking**
+   - Product interactions (views, likes, dislikes)
+   - Campaign engagement metrics
+   - Brand affinity tracking
+
+### Admin User Management
+
+Detailed information about admin user management can be found in the [Admin User Roles](./admin-user-roles.md) documentation. Key workflows include:
+
+1. **Admin User Creation**
+   - Super-admins can create new admin users
+   - Initial setup requires the `setup-admin.ts` script
+
+2. **Role Assignment and Management**
+   - Super-admins can assign and modify roles
+   - Role changes take effect immediately
+
+3. **Account Security**
+   - Password reset functionality
+   - Account disabling/enabling
+   - Session management and timeout settings
+
+## Implementation Details
+
+### Firebase Integration
+
+User management is implemented using Firebase Authentication and custom claims:
+
+1. **Authentication**
+   - Firebase Authentication handles credential storage and verification
+   - Secure password hashing and storage
+   - Token-based authentication with short-lived JWTs
+
+2. **Custom Claims**
+   - Admin roles stored as custom claims
+   - Claims verified on both client and server
+   - Used for role-based access control
+
+3. **Security Rules**
+   - Firestore security rules enforce access control
+   - Different read/write permissions based on user type and role
+
+For more details on Firebase integration, see the [Firebase Integration](./firebase-integration.md) documentation.
+
+### API Endpoints
+
+The following API endpoints are available for user management:
+
+1. **End User Endpoints**
+   - `/api/auth/register` - Register a new user
+   - `/api/auth/login` - Authenticate a user
+   - `/api/auth/logout` - End a user session
+   - `/api/users/profile` - Get or update user profile
+
+2. **Admin User Endpoints**
+   - `/api/users` - List all users (admin only)
+   - `/api/users` - Create a new admin user (super-admin only)
+   - `/api/users/[uid]` - Get, update, or delete a specific user
+   - `/api/users/[uid]/role` - Update a user's role (super-admin only)
+
+## Best Practices
+
+1. **Security**
+   - Always verify user permissions on the server side
+   - Use HTTPS for all API requests
+   - Implement proper CSRF protection
+   - Set secure and HTTP-only flags on cookies
+
+2. **Performance**
+   - Cache user data where appropriate
+   - Minimize token size by limiting custom claims
+   - Use server-side pagination for user lists
+
+3. **Privacy**
+   - Only collect necessary user information
+   - Provide clear privacy policy
+   - Implement data deletion workflows
+   - Comply with relevant privacy regulations (GDPR, CCPA)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Authentication Failures**
+   - Check for correct email/password
+   - Verify account is not disabled
+   - Check for browser cookie settings blocking authentication
+
+2. **Permission Errors**
+   - Verify user has the correct role assigned
+   - Check that custom claims are properly set
+   - Ensure token is not expired
+
+3. **Session Issues**
+   - Clear browser cookies and cache
+   - Try logging out and back in
+   - Check for clock skew between client and server
+
+## Related Documentation
+
+- [Admin User Roles](./admin-user-roles.md) - Detailed information about admin roles and permissions
+- [Firebase Integration](./firebase-integration.md) - How Firebase is used in the project
+- [Deployment](./deployment.md) - Deployment configuration including authentication settings

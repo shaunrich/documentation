@@ -1,0 +1,91 @@
+---
+title: "Performance"
+description: "Issue: The app is using Next.js Image component with unoptimized: true (as per user memory), which disables Next.js built-in image optimization."
+---
+
+# Performance Issues and Mitigation Strategies
+
+## 1. Image Optimization
+
+**Issue:** The app is using Next.js Image component with `unoptimized: true` (as per user memory), which disables Next.js built-in image optimization.
+
+**Mitigation:**
+- Consider enabling Next.js image optimization for specific domains using `remotePatterns` in next.config.ts instead of completely disabling optimization
+- Implement responsive images with appropriate sizes for different viewport widths
+- Use modern image formats like WebP or AVIF where supported
+
+## 2. Firebase Data Fetching
+
+**Issue:** All products are fetched at once on the main page load without pagination or lazy loading.
+
+**Mitigation:**
+- Implement pagination or infinite scrolling to load products in smaller batches
+- Add caching mechanisms for product data
+- Consider using Firebase query limits and ordering to fetch only what's needed
+- Implement server-side rendering (SSR) for initial product data to improve First Contentful Paint
+
+## 3. Animation Performance
+
+**Issue:** Heavy use of Framer Motion animations, especially in ProductCard and SwipeContainer components, may cause performance issues on lower-end devices.
+
+**Mitigation:**
+- Reduce animation complexity for mobile devices
+- Use the `useReducedMotion` hook from Framer Motion to respect user preferences
+- Implement progressive enhancement for animations
+- Consider using CSS animations for simpler effects
+
+## 4. Render Optimization
+
+**Issue:** The SwipeContainer component re-renders frequently due to state changes and animation effects.
+
+**Mitigation:**
+- Implement React.memo for ProductCard components to prevent unnecessary re-renders
+- Use useCallback for event handlers to maintain referential equality
+- Consider using virtualization for long lists of products
+- Split complex components into smaller, more focused components
+
+## 5. Analytics Overhead
+
+**Issue:** Multiple analytics tracking calls are made during user interactions, which can impact performance.
+
+**Mitigation:**
+- Batch analytics events where possible
+- Defer non-critical tracking events
+- Consider using a queue system for analytics events
+- Implement a throttling mechanism for high-frequency events (like swipes)
+
+## 6. Session Storage Usage
+
+**Issue:** The app uses sessionStorage to track viewed products, which can lead to performance issues with a large number of products.
+
+**Mitigation:**
+- Use more efficient storage methods for tracking viewed products
+- Implement a cleanup mechanism to remove old entries
+- Consider using a more structured approach like IndexedDB for client-side storage
+
+## 7. CSS and JavaScript Bundle Size
+
+**Issue:** No visible code splitting or lazy loading of components.
+
+**Mitigation:**
+- Implement code splitting using dynamic imports
+- Lazy load non-critical components
+- Optimize Tailwind CSS usage by purging unused styles
+- Consider implementing module/component level code splitting
+
+## 8. Firebase Configuration Logging
+
+**Issue:** Firebase configuration is being logged to the console, which is unnecessary in production.
+
+**Mitigation:**
+- Remove or conditionally log Firebase configuration based on environment
+- Implement proper environment-based logging
+
+## 9. Memory Management
+
+**Issue:** The app keeps all products in memory even after they've been processed.
+
+**Mitigation:**
+- Implement a more efficient data structure for tracking processed products
+- Clean up resources when components unmount
+- Consider using a more memory-efficient approach for managing product state

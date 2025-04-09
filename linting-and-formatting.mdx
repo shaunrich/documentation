@@ -1,0 +1,120 @@
+---
+title: "Linting And Formatting"
+description: "This document outlines the linting and formatting standards used in the SVYP project. Following these standards ensures code consistency and qualit..."
+---
+
+# Linting and Formatting Guide
+
+## Overview
+
+This document outlines the linting and formatting standards used in the SVYP project. Following these standards ensures code consistency and quality across the codebase.
+
+## Tools
+
+The SVYP project uses the following tools for code quality:
+
+1. **ESLint**: For static code analysis and enforcing coding standards
+2. **Prettier**: For consistent code formatting
+3. **TypeScript**: For type checking
+4. **Husky & lint-staged**: For pre-commit hooks to ensure code quality
+
+## ESLint Configuration
+
+ESLint is configured to enforce best practices for React and TypeScript development. The configuration is defined in `.eslintrc.json`.
+
+Key rules include:
+
+- React hooks rules
+- TypeScript-specific rules
+- Accessibility (a11y) rules
+- Import ordering
+- Unused variables detection
+
+## Prettier Configuration
+
+Prettier ensures consistent code formatting across the project. The configuration is defined in `.prettierrc`.
+
+Key settings include:
+
+- Single quotes for strings
+- No semicolons
+- 2-space indentation
+- 100 character line length
+- Trailing commas in multi-line objects and arrays
+
+## VS Code Integration
+
+For VS Code users, we recommend installing the ESLint and Prettier extensions. The project includes a `.vscode/settings.json` file that configures:
+
+- Format on save
+- Default formatter (Prettier)
+- ESLint validation
+
+## Running Linting and Formatting
+
+### Manual Commands
+
+You can run these commands manually:
+
+```bash
+# Run ESLint
+npm run lint
+
+# Fix ESLint issues automatically where possible
+npm run lint:fix
+
+# Format code with Prettier
+npm run format
+```
+
+### Pre-commit Hooks
+
+The project uses Husky and lint-staged to run linting and formatting checks before each commit:
+
+1. ESLint checks for code quality issues
+2. Prettier formats the code
+3. TypeScript checks for type errors
+
+If any of these checks fail, the commit will be blocked until the issues are resolved.
+
+## Common Issues and Solutions
+
+### ESLint Errors
+
+- **Unused variables**: Remove or use the variable
+- **Missing dependencies in useEffect**: Add all dependencies to the dependency array
+- **Accessibility issues**: Ensure proper ARIA attributes and semantic HTML
+
+### Prettier Conflicts
+
+If you encounter conflicts between ESLint and Prettier:
+
+1. Make sure both extensions are installed in VS Code
+2. Check that the ESLint config extends Prettier
+3. Try running `npm run lint:fix` followed by `npm run format`
+
+## Adding New Rules
+
+When adding new ESLint rules or Prettier configurations:
+
+1. Discuss with the team first
+2. Update the relevant configuration file
+3. Run linting and formatting on the entire codebase
+4. Document the change in this guide
+
+## Best Practices
+
+1. **Run linting locally** before pushing changes
+2. **Fix issues as they arise** rather than accumulating them
+3. **Use TypeScript properly** to leverage its type safety benefits
+4. **Comment code** when complex logic needs explanation
+5. **Keep components small and focused** for better maintainability
+
+## Troubleshooting
+
+If you encounter issues with linting or formatting:
+
+1. Check that all dependencies are installed (`npm install`)
+2. Ensure your IDE is configured correctly
+3. Try resetting the ESLint and Prettier configuration
+4. Consult with the team if issues persist

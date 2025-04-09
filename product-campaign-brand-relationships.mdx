@@ -1,0 +1,253 @@
+---
+title: "Product Campaign Brand Relationships"
+description: "This document explains the hierarchical relationship between products, campaigns, and brands in the SVYP platform, detailing how these entities int..."
+---
+
+# Product, Campaign, and Brand Relationships
+
+## Overview
+
+This document explains the hierarchical relationship between products, campaigns, and brands in the SVYP platform, detailing how these entities interact with one another and their respective roles in the system architecture.
+
+## Data Hierarchy
+
+The SVYP platform implements a three-tier hierarchical structure:
+
+1. **Brands** (top level)
+   - Serve as the highest-level organizational containers
+   - Each brand can have multiple campaigns
+   - Products are associated with a specific brand
+
+2. **Campaigns** (middle level)
+   - Belong to a specific brand (via `brandId`)
+   - Group related products for targeted marketing
+   - Each campaign contains references to multiple products (`productIds`)
+
+3. **Products** (bottom level)
+   - Can be associated with a specific brand (via `brandId`)
+   - Can appear in multiple campaigns
+   - Represent the actual items being promoted
+
+## Entity Relationships
+
+### Brand-to-Campaign Relationship
+
+- **One-to-Many**: A brand can have multiple campaigns
+- **Required Association**: Every campaign must belong to exactly one brand
+- **Identification**: Campaigns reference their parent brand via the `brandId` field
+- **URL Structure**: Campaigns are accessed via nested routes: `/{brandSlug}/{campaignSlug}`
+
+### Brand-to-Product Relationship
+
+- **One-to-Many**: A brand can have multiple products
+- **Optional Association**: Products can optionally be associated with a brand
+- **Identification**: Products can reference a brand via the optional `brandId` field
+
+### Campaign-to-Product Relationship
+
+- **Many-to-Many**: Products can appear in multiple campaigns, and campaigns can contain multiple products
+- **Reference Array**: Campaigns store an array of `productIds` to reference associated products
+- **No Direct Reference**: Products don't directly reference campaigns (the relationship is maintained only in the campaign)
+
+## Data Structures
+
+### Brand
+
+```typescript
+interface Brand {
+  id: string;         // Unique identifier
+  name: string;       // Brand name
+  logoUrl: string;    // URL to brand logo image
+  slug: string;       // URL-friendly unique identifier
+  createdAt: number;  // Creation timestamp
+  updatedAt: number;  // Last update timestamp
+}
+```
+
+### Campaign
+
+```typescript
+interface Campaign {
+  id: string;         // Unique identifier
+  name: string;       // Campaign name
+  slug: string;       // URL-friendly unique identifier
+  brandId: string;    // Reference to parent brand
+  productIds: string[]; // Array of product references
+  createdAt: number;  // Creation timestamp
+  updatedAt: number;  // Last update timestamp
+}
+```
+
+### Product
+
+```typescript
+interface Product {
+  id: string;         // Unique identifier
+  name: string;       // Product name
+  description: string;// Product description
+  price: number;      // Product price
+  imageUrl: string;   // URL to product image
+  brandId?: string;   // Optional reference to parent brand
+  affiliateUrl?: string; // Optional URL for product purchase
+}
+```
+
+## Key Operations
+
+### Creating a New Brand
+
+1. Admin creates a brand with a unique slug
+2. System validates slug uniqueness across all brands
+3. Brand is stored in the "brands" Firestore collection
+
+### Creating a New Campaign
+
+1. Admin selects a parent brand
+2. Admin creates a campaign with a unique slug
+3. System validates slug uniqueness within the context of the selected brand
+4. Admin selects products to include in the campaign
+5. Campaign is stored in the "campaigns" Firestore collection with:
+   - Reference to parent brand (`brandId`)
+   - Array of selected product IDs (`productIds`)
+
+### Creating a New Product
+
+1. Admin creates a product with required details
+2. Admin optionally associates the product with a brand
+3. Product is stored in the "products" Firestore collection
+4. Product can later be added to multiple campaigns
+
+## URL Structure and Routing
+
+The platform uses a hierarchical URL structure that reflects the brand-campaign relationship:
+
+- **Brand Pages**: `/{brandSlug}`
+  - Displays brand information and lists associated campaigns
+
+- **Campaign Pages**: `/{brandSlug}/{campaignSlug}`
+  - Displays products associated with the specific campaign
+  - Verifies that the campaign belongs to the specified brand
+
+- **Legacy Campaign URLs**: `/{campaignSlug}`
+  - Supports backward compatibility
+  - Redirects to the new format when possible
+
+## Querying and Filtering
+
+### Finding Campaigns for a Brand
+
+```typescript
+// Pseudo-code example
+const brandCampaigns = allCampaigns.filter(campaign => campaign.brandId === brandId);
+```
+
+### Finding Products for a Campaign
+
+```typescript
+// Actual implementation from firebase.ts
+export const fetchProductsForCampaign = async (campaignId: string): Promise<Product[]> => {
+  const campaign = await fetchCampaignById(campaignId);
+  if (!campaign) return [];
+  
+  const products = await fetchProducts();
+  return products.filter(product => campaign.productIds.includes(product.id));
+};
+```
+
+### Finding Products for a Brand
+
+```typescript
+// Pseudo-code example
+const brandProducts = allProducts.filter(product => product.brandId === brandId);
+```
+
+## Constraints and Validation
+
+1. **Brand Slug Uniqueness**
+   - Brand slugs must be unique across the entire application
+   - Enforced during brand creation and updates
+
+2. **Campaign Slug Uniqueness**
+   - Campaign slugs must be unique within a brand
+   - Different brands can have campaigns with the same slug
+   - Enforced during campaign creation and updates
+
+3. **Brand-Campaign Relationship Integrity**
+   - Campaigns must have a valid `brandId` referencing an existing brand
+   - Deleting a brand should handle associated campaigns appropriately
+
+## Analytics Integration
+
+The hierarchical structure enhances analytics tracking:
+
+1. **Brand Context**
+   - All analytics events include brand information when available
+   - Enables brand-level performance analysis
+
+2. **Campaign Context**
+   - Product interactions within campaigns include campaign data
+   - Allows for campaign effectiveness measurement
+
+3. **Product Metrics**
+   - Product performance can be analyzed across campaigns
+   - Comparison of the same product's performance in different campaigns
+
+## Migration Considerations
+
+For existing implementations transitioning to the brand-campaign hierarchy:
+
+1. **Default Brand Creation**
+   - Create a default brand for existing campaigns
+   - Associate legacy campaigns with this default brand
+
+2. **URL Structure Updates**
+   - Update routing to support both legacy and new URL formats
+   - Implement redirects from old to new URL structure
+
+3. **Data Migration**
+   - Update existing campaigns to include `brandId`
+   - Optionally associate existing products with appropriate brands
+
+## Best Practices
+
+1. **Brand Organization**
+   - Create distinct brands for different product lines or marketing initiatives
+   - Use clear, memorable slugs for brands
+
+2. **Campaign Strategy**
+   - Group related products in campaigns for targeted marketing
+   - Create seasonal or thematic campaigns within brands
+
+3. **Product Management**
+   - Associate products with their appropriate brand
+   - Reuse products across multiple campaigns when relevant
+
+## Technical Implementation Notes
+
+1. **Firestore Collections**
+   - Three main collections: "brands", "campaigns", and "products"
+   - References maintained through ID fields, not Firestore references
+
+2. **Query Optimization**
+   - Composite index on campaigns collection (slug, brandId)
+   - Enables efficient campaign lookup by slug within a brand
+
+3. **Component Updates**
+   - UI components updated to display brand information
+   - Analytics tracking enhanced with brand and campaign context
+
+## Future Enhancements
+
+1. **Brand-specific Styling**
+   - Allow custom theming and styling per brand
+
+2. **Advanced Filtering**
+   - Filter products by both brand and campaign attributes
+
+3. **Hierarchical Analytics**
+   - Develop brand-level and campaign-level dashboards
+   - Compare performance across brands and campaigns
+
+4. **Brand Administrators**
+   - Implement brand-specific admin roles
+   - Allow delegation of campaign management to brand admins

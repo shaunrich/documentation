@@ -1,0 +1,144 @@
+---
+title: "Deployment"
+description: "This document outlines the deployment process for the SVYP project, including both manual and automated deployment methods."
+---
+
+# SVYP Project Deployment Documentation
+
+This document outlines the deployment process for the SVYP project, including both manual and automated deployment methods.
+
+## Table of Contents
+
+- [Environment Overview](#environment-overview)
+- [Automated Deployments](#automated-deployments)
+  - [Staging Deployment](#staging-deployment)
+  - [Production Deployment](#production-deployment)
+- [Manual Deployments](#manual-deployments)
+- [Environment Variables](#environment-variables)
+- [Troubleshooting](#troubleshooting)
+
+## Environment Overview
+
+The SVYP project uses the following environments:
+
+1. **Local Development**: Running on developer machines for feature development and testing
+2. **Staging**: Deployed from the `develop` branch for QA and testing
+3. **Production**: Deployed from the `main` branch for end users
+
+All environments are hosted on Vercel, which provides preview deployments, continuous integration, and production hosting.
+
+## Automated Deployments
+
+The SVYP project uses GitHub Actions to automate deployments to both staging and production environments.
+
+### Staging Deployment
+
+**Trigger**: Automatic deployment occurs when code is pushed to the `develop` branch.
+
+**Workflow File**: `.github/workflows/deploy-staging.yml`
+
+**Process**:
+
+1. GitHub Actions checks out the code
+2. Sets up Node.js 18 and installs dependencies
+3. Configures Vercel project settings
+4. Builds and deploys to Vercel preview environment
+5. Adds a comment to the commit with the deployment URL
+
+**Viewing Deployments**:
+
+- Check the GitHub Actions tab in the repository to see deployment status
+- Look for commit comments with deployment URLs
+- Access the Vercel dashboard to see all preview deployments
+
+### Production Deployment
+
+**Trigger**: Automatic deployment occurs when code is pushed to the `main` branch.
+
+**Workflow File**: `.github/workflows/deploy-production.yml`
+
+**Process**:
+
+1. GitHub Actions checks out the code
+2. Sets up Node.js 18 and installs dependencies
+3. Configures Vercel project settings
+4. Builds and deploys to Vercel production environment
+5. Adds a comment to the commit with the deployment URL
+
+**Production URL**: [https://svyp.vercel.app](https://svyp.vercel.app) (replace with actual production URL)
+
+## Manual Deployments
+
+In case you need to deploy manually, follow these steps:
+
+1. **Install Vercel CLI** (if not already installed):
+
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Link your local project** (first-time only):
+
+   ```bash
+   vercel link
+   ```
+
+3. **Deploy to preview/staging**:
+
+   ```bash
+   vercel
+   ```
+
+4. **Deploy to production**:
+   ```bash
+   vercel --prod
+   ```
+
+## Environment Variables
+
+The following environment variables are required for deployment:
+
+| Variable                                   | Description                                | Required In      |
+| ------------------------------------------ | ------------------------------------------ | ---------------- |
+| `NEXT_PUBLIC_FIREBASE_API_KEY`             | Firebase API key                           | All environments |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | Firebase auth domain                       | All environments |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | Firebase project ID                        | All environments |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`      | Firebase storage bucket                    | All environments |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID               | All environments |
+| `NEXT_PUBLIC_FIREBASE_APP_ID`              | Firebase app ID                            | All environments |
+| `NEXT_PUBLIC_MIXPANEL_TOKEN`               | Mixpanel analytics token                   | All environments |
+| `FIREBASE_CLIENT_EMAIL`                    | Firebase admin client email                | Production only  |
+| `FIREBASE_PRIVATE_KEY`                     | Firebase admin private key                 | Production only  |
+| `POSTMARK_API_TOKEN`                       | Postmark API token for email delivery      | Production only  |
+| `POSTMARK_FROM_EMAIL`                      | Verified sender email address for Postmark | Production only  |
+
+These variables should be configured in the Vercel project settings and as GitHub secrets for automated deployments.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Deployment Fails with Authentication Error**:
+
+   - Verify that the `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` secrets are correctly set in GitHub
+   - Ensure the Vercel token has the necessary permissions
+
+2. **Build Fails Due to Missing Environment Variables**:
+
+   - Check that all required environment variables are set in Vercel project settings
+   - For local builds, ensure you have a `.env.local` file with the necessary variables
+
+3. **Vercel CLI Command Not Found**:
+   - Reinstall the Vercel CLI: `npm install -g vercel`
+
+### Getting Help
+
+If you encounter issues with deployments:
+
+1. Check the GitHub Actions logs for detailed error messages
+2. Review the Vercel deployment logs in the Vercel dashboard
+3. Contact the project maintainer or DevOps team for assistance
+
+---
+
+Last updated: April 8, 2025

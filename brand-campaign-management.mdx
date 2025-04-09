@@ -1,0 +1,142 @@
+---
+title: "Brand Campaign Management"
+description: "This document outlines the implementation of brand and campaign management features in the SVYP application. Brands serve as top-level containers f..."
+---
+
+# Brand and Campaign Management Implementation
+
+## Overview
+
+This document outlines the implementation of brand and campaign management features in the SVYP application. Brands serve as top-level containers for campaigns, allowing for organized marketing and promotional activities. Each brand has a unique URL slug, logo, and name. Campaigns are associated with a specific brand and contain multiple products.
+
+## Features Implemented
+
+### Data Structure
+
+- **Brand Type**: Created a `Brand` interface in `src/types/brand.ts` with the following properties:
+  - `id`: Unique identifier
+  - `name`: Brand name
+  - `logoUrl`: URL to the brand's logo image
+  - `slug`: URL-friendly unique identifier for the brand
+  - `createdAt`: Timestamp for creation date
+  - `updatedAt`: Timestamp for last update
+
+- **Campaign Type**: Updated the `Campaign` interface in `src/types/campaign.ts` to include:
+  - `id`: Unique identifier
+  - `name`: Campaign name
+  - `slug`: URL-friendly unique identifier for the campaign
+  - `brandId`: Reference to the brand this campaign belongs to
+  - `productIds`: Array of product IDs associated with the campaign
+  - `createdAt`: Timestamp for creation date
+  - `updatedAt`: Timestamp for last update
+
+- **Product Type**: Updated the `Product` interface in `src/types/product.ts` to include:
+  - `brandId`: Reference to the brand this product belongs to
+
+### Firebase Integration
+
+- **Brand Collection**: Added a new collection in Firebase Firestore to store brand data
+- **CRUD Operations for Brands**: Implemented the following functions in `src/utils/firebase.ts`:
+  - `fetchBrands()`: Retrieve all brands
+  - `fetchBrandBySlug(slug)`: Find a brand by its URL slug
+  - `fetchBrandById(id)`: Find a brand by its ID
+  - `createBrand(brand)`: Create a new brand with slug uniqueness validation
+  - `updateBrand(id, brand)`: Update an existing brand with slug uniqueness validation
+  - `deleteBrand(id)`: Remove a brand
+
+- **Updated Campaign Operations**:
+  - Modified `fetchCampaignBySlug(slug, brandId)` to optionally filter by brandId
+  - Updated campaign creation and editing to include brandId
+
+### Admin Interface
+
+- **Brand Management Page**: Created a new admin page at `src/app/admin/brands/page.tsx` for:
+  - Viewing all brands in a list
+  - Creating new brands with logo upload
+  - Editing existing brands
+  - Deleting brands
+
+- **Updated Campaign Management**: Enhanced the campaign management page at `src/app/admin/campaigns/page.tsx` to:
+  - Include brand selection when creating/editing campaigns
+  - Display brand information in the campaign list
+  - Update campaign URLs to include brand slug
+
+- **Migration Utility**: Created a migration utility at `src/app/admin/migrate/page.tsx` to:
+  - Create a default brand for existing campaigns
+  - Associate existing campaigns with the default brand
+
+### Frontend Display
+
+- **Dynamic Routing**: Implemented nested dynamic routing at `src/app/[brandSlug]/[campaignSlug]/page.tsx` to:
+  - Load brand and campaign data based on URL slugs
+  - Verify that the campaign belongs to the specified brand
+  - Display campaign-specific products using the SwipeContainer
+
+- **Legacy Support**: Updated the existing `src/app/[slug]/page.tsx` route to:
+  - Support legacy URLs during the transition period
+  - Redirect to the new URL format when possible
+
+- **Homepage**: Updated the homepage to display brands and their campaigns
+
+### Component Updates
+
+- **SafeImage**: Utilized the existing SafeImage component for displaying brand logos
+- **SwipeContainer**: Updated to include brand context in analytics events
+
+## Firebase Setup Requirements
+
+To use the brand and campaign management features, the following Firebase setup is required:
+
+1. **Firestore Collections**: 
+   - "brands" collection in Firestore
+   - "campaigns" collection with brandId field
+   - "products" collection with brandId field
+
+2. **Security Rules**: Update Firestore security rules to protect brand and campaign data:
+   ```
+   match /brands/{brandId} {
+     allow read;
+     allow write: if request.auth != null && request.auth.uid != null;
+   }
+   
+   match /campaigns/{campaignId} {
+     allow read;
+     allow write: if request.auth != null && request.auth.uid != null;
+   }
+   ```
+
+3. **Indexes**: Create a composite index for the campaigns collection:
+   - Collection: campaigns
+   - Fields to index: slug (Ascending), brandId (Ascending)
+
+## URL Structure
+
+The application now uses a hierarchical URL structure:
+
+- Brand and Campaign Pages: `https://yourdomain.com/[brandSlug]/[campaignSlug]`
+- Legacy Campaign URLs: `https://yourdomain.com/[campaignSlug]` (redirects to new format)
+
+## Migration Process
+
+To migrate existing campaigns to the new brand structure:
+
+1. Access the migration utility at `/admin/migrate`
+2. Create a default brand if one doesn't exist
+3. Associate all unmigrated campaigns with the default brand
+4. The system will automatically redirect old URLs to the new format
+
+## Future Enhancements
+
+- Brand-specific analytics dashboard
+- Brand-level styling and theming
+- Multiple brand administrators with different permissions
+- Brand-specific product catalogs
+- Brand performance comparison metrics
+
+## Technical Considerations
+
+- Brand slugs must be unique across the application
+- Campaign slugs must be unique within a brand (but can be reused across different brands)
+- Products can belong to multiple campaigns but are associated with a single brand
+- Brand data is included in all analytics events for better tracking
+- The image proxy solution is used for handling brand logos from external domains

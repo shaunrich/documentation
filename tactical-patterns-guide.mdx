@@ -1,0 +1,758 @@
+---
+title: "Tactical Patterns Guide"
+description: "This guide documents the established tactical design patterns and coding conventions used throughout the SVYP codebase. It serves as a reference fo..."
+---
+
+# 📋 SVYP Tactical Design Patterns & Coding Conventions
+
+This guide documents the established tactical design patterns and coding conventions used throughout the SVYP codebase. It serves as a reference for maintaining consistency in development practices and architectural decisions.
+
+## 🧩 Tactical Patterns
+
+### 🏗️ Domain Models
+
+Domain models in SVYP are primarily defined using **TypeScript interfaces** that provide strong typing for the application's core entities. This approach offers several advantages:
+
+- Clear, declarative type definitions
+- Compile-time type checking
+- IDE autocompletion and documentation support
+- Ability to compose and extend types
+
+#### Type Definition Pattern
+
+Domain entities are defined as TypeScript interfaces in the `/src/types` directory, with each entity in its own file:
+
+```typescript
+// src/types/brand.ts
+export interface BrandTheme {
+  primary: string;
+  background: string;
+  reward: string;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  logoUrl: string;
+  slug: string;
+  createdAt: number;
+  updatedAt: number;
+  theme?: BrandTheme;
+}
+```
+
+```typescript
+// src/types/campaign.ts
+import { BrandTheme } from './brand';
+
+export interface Campaign {
+  id: string;
+  name: string;
+  slug: string; // For unique URL
+  brandId: string; // Reference to the brand this campaign belongs to
+  productIds: string[];
+  createdAt: number;
+  updatedAt: number;
+  themeOverrides?: Partial<BrandTheme>; // Optional theme overrides for this campaign
+}
+```
+
+#### Type Derivation Practices
+
+The codebase follows consistent patterns for type derivation:
+
+1. **Partial Types** for updates:
+   ```typescript
+   // When updating entities
+   updateBrand(id: string, brand: Partial<Brand>)
+   ```
+
+2. **Omit Types** for creation (excluding auto-generated properties):
+   ```typescript
+   // When creating new entities
+   createCampaign(campaign: Omit<Campaign, 'id'>)
+   ```
+
+3. **Interface Extension** for related types:
+   ```typescript
+   // Extending types with additional properties
+   interface BrandWithCampaigns extends Brand {
+     campaigns: Campaign[];
+   }
+   ```
+
+#### Validation Patterns
+
+Validation occurs primarily at the application boundaries:
+
+1. **Input Validation** in form handling components:
+   ```typescript
+   // Email validation example from EmailCaptureForm.tsx
+   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+   
+   if (!email) {
+     setEmailError('Email is required');
+     return;
+   }
+   
+   if (!emailRegex.test(email)) {
+     setEmailError('Please enter a valid email address');
+     return;
+   }
+   ```
+
+2. **API Endpoint Validation** for server-side requests:
+   ```typescript
+   // Validation in API route
+   if (!email || !password) {
+     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+   }
+   ```
+
+### 🔄 Result Types
+
+The SVYP codebase employs a consistent pattern for representing operation results throughout the application. This approach combines explicit success/error signaling with TypeScript's type system.
+
+#### Success and Error Representation
+
+Server responses follow a consistent JSON structure:
+
+```typescript
+// Success response pattern
+return NextResponse.json({ 
+  success: true, 
+  uid: decodedToken.uid, 
+  role: decodedToken.customClaims?.role || 'user',
+  brandIds: decodedToken.customClaims?.brandIds || []
+});
+
+// Error response pattern
+return NextResponse.json({ error: 'Failed to create session' }, { status: 401 });
+```
+
+#### Discriminated Union Patterns
+
+While not using explicit discriminated unions in all cases, the codebase does employ TypeScript's type system to handle different result types:
+
+```typescript
+// Implicit discriminated union via return type
+async function fetchBrandBySlug(slug: string): Promise<Brand | null> {
+  try {
+    // Implementation
+    return brand || null;
+  } catch (error) {
+    console.error('Error fetching brand by slug:', error);
+    return null;
+  }
+}
+```
+
+#### Layer Transformation
+
+Results are transformed as they move through the application layers:
+
+1. **Data Layer**: Functions return raw Firebase documents or null
+2. **Repository Layer**: Transforms Firebase documents to domain entities
+3. **Component Layer**: Maps domain entities to component props
+
+```typescript
+// Repository Layer (src/utils/firebase.ts)
+export const fetchProductsForCampaign = async (campaignId: string): Promise<Product[]> => {
+  try {
+    const campaign = await fetchCampaignById(campaignId);
+    if (!campaign) return [];
+    
+    const products = await fetchProducts();
+    return products.filter(product => campaign.productIds.includes(product.id));
+  } catch (error) {
+    console.error('Error fetching products for campaign:', error);
+    return [];
+  }
+};
+
+// Component Layer (using the repository)
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      const products = await fetchProductsForCampaign(campaignId);
+      setProducts(products);
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setError('Failed to load products');
+      setLoading(false);
+    }
+  };
+  
+  loadData();
+}, [campaignId]);
+```
+
+### ⚠️ Error Handling
+
+SVYP implements a consistent error handling philosophy across its codebase, balancing developer experience with robust user-facing error management.
+
+#### Error Handling Philosophy
+
+The application uses a **hybrid approach** to error handling:
+
+1. **Try-Catch with Returned Results**: Most repository functions catch errors internally and return empty arrays, null, or default values
+2. **Error Propagation**: API routes and server actions allow errors to propagate with structured error responses
+3. **Explicit Error States**: UI components track and display error states explicitly
+
+#### Error Propagation Through Layers
+
+Errors propagate differently depending on the layer:
+
+```typescript
+// Repository Layer: Catch and return fallback values
+export const fetchBrands = async (): Promise<Brand[]> => {
+  try {
+    const brandsCollection = collection(db, 'brands');
+    const brandsSnapshot = await getDocs(brandsCollection);
+    return brandsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Brand[];
+  } catch (error) {
+    console.error('Error fetching brands:', error);
+    return [];
+  }
+};
+
+// API Layer: Catch and return structured error response
+export async function GET(request: NextRequest) {
+  try {
+    // Implementation
+    return NextResponse.json({ users });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+  }
+}
+
+// Component Layer: Set local error state
+const [error, setError] = useState<string | null>(null);
+
+try {
+  // Implementation
+} catch (error) {
+  setError('Something went wrong. Please try again.');
+}
+```
+
+#### Logging Practices
+
+The codebase follows consistent error logging patterns:
+
+1. **Contextual Logging**: Errors include context about the operation being performed
+   ```typescript
+   console.error('Error fetching products for campaign:', error);
+   ```
+
+2. **Layer-specific Logging**: Error messages indicate the layer where the error occurred
+   ```typescript
+   console.error('API Error - Failed to create user:', error);
+   ```
+
+3. **Redaction of Sensitive Information**: Sensitive data is redacted from logs
+   ```typescript
+   console.log('Firebase config:', { ...firebaseConfig, apiKey: '[REDACTED]' });
+   ```
+
+#### Exceptions vs. Returned Errors
+
+The codebase follows these guidelines for error handling:
+
+1. **Use Exceptions (throw) When**:
+   - An error is truly exceptional and unexpected
+   - In middleware where error propagation affects the request flow
+   - During application initialisation
+
+2. **Use Returned Errors When**:
+   - A failure is an expected potential outcome (e.g., item not found)
+   - In UI components where you need to display error states
+   - When calling external services that might fail in expected ways
+
+### 📁 Repository Pattern
+
+The SVYP application implements a clear repository pattern to abstract data access and provide a consistent interface for domain operations.
+
+#### Repository Interface and Implementation
+
+While not using formal interface definitions, the codebase follows a functional repository pattern:
+
+```typescript
+// Repository function for fetching campaigns
+export const fetchCampaigns = async (): Promise<Campaign[]> => {
+  try {
+    const campaignsCollection = collection(db, 'campaigns');
+    const campaignsSnapshot = await getDocs(campaignsCollection);
+    return campaignsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Campaign[];
+  } catch (error) {
+    console.error('Error fetching campaigns:', error);
+    return [];
+  }
+};
+```
+
+#### Transaction Handling
+
+Operations that require consistency across multiple documents follow an atomic pattern:
+
+```typescript
+// Example of transaction-like behaviour when creating entities with relationships
+export const createCampaign = async (campaign: Omit<Campaign, 'id'>) => {
+  try {
+    console.log('Creating campaign:', campaign.name);
+    
+    // First verify the brand exists to maintain referential integrity
+    const brandRef = doc(db, 'brands', campaign.brandId);
+    const brandDoc = await getDoc(brandRef);
+    
+    if (!brandDoc.exists()) {
+      throw new Error(`Brand with ID ${campaign.brandId} does not exist`);
+    }
+    
+    // Then add the campaign with timestamps
+    const timestamp = Date.now();
+    const campaignsCollection = collection(db, 'campaigns');
+    const docRef = await addDoc(campaignsCollection, {
+      ...campaign,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    
+    return {
+      id: docRef.id,
+      ...campaign,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+  } catch (error) {
+    console.error('Error creating campaign:', error);
+    throw error;
+  }
+};
+```
+
+#### Concurrency Control
+
+The codebase implements optimistic concurrency control using timestamps:
+
+```typescript
+// Updating with timestamp to track the latest version
+export const updateBrand = async (id: string, brand: Partial<Brand>) => {
+  try {
+    console.log('Updating brand:', id);
+    const brandRef = doc(db, 'brands', id);
+    
+    // Update timestamp to mark this as the most recent change
+    await updateDoc(brandRef, {
+      ...brand,
+      updatedAt: Date.now(),
+    });
+    
+    // Get and return the updated document
+    const updatedDoc = await getDoc(brandRef);
+    
+    if (!updatedDoc.exists()) {
+      throw new Error(`Brand with ID ${id} not found`);
+    }
+    
+    return {
+      id: updatedDoc.id,
+      ...updatedDoc.data(),
+    } as Brand;
+  } catch (error) {
+    console.error('Error updating brand:', error);
+    throw error;
+  }
+};
+```
+
+#### Repository Method Naming Conventions
+
+The repository methods follow consistent naming conventions:
+
+1. **Fetch Operations**:
+   - `fetch[Entity](s)`: Get all entities of a type
+   - `fetch[Entity]By[Property]`: Get entities by a specific property
+
+2. **Mutation Operations**:
+   - `create[Entity]`: Create a new entity
+   - `update[Entity]`: Update an existing entity
+   - `delete[Entity]`: Remove an entity
+
+3. **Relationship Operations**:
+   - `fetch[EntityA]For[EntityB]`: Get related entities
+
+```typescript
+// Examples of naming conventions
+fetchProducts()
+fetchProductsForCampaign(campaignId)
+fetchCampaignBySlug(slug, brandId)
+createBrand(brand)
+updateProduct(id, product)
+deleteCampaign(id)
+```
+
+#### Repository Error Handling
+
+Repository functions implement consistent error handling:
+
+```typescript
+export const fetchBrandBySlug = async (slug: string): Promise<Brand | null> => {
+  try {
+    console.log('Fetching brand by slug:', slug);
+    const brandsCollection = collection(db, 'brands');
+    const q = query(brandsCollection, where('slug', '==', slug));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log(`No brand found with slug: ${slug}`);
+      return null;
+    }
+    
+    return {
+      id: querySnapshot.docs[0].id,
+      ...querySnapshot.docs[0].data(),
+    } as Brand;
+  } catch (error) {
+    console.error('Error fetching brand by slug:', error);
+    return null;
+  }
+};
+```
+
+### 🖼️ UI Components
+
+SVYP implements a consistent approach to UI component design, emphasising reusability, composability, and clear interfaces.
+
+#### Component Design Philosophy
+
+The codebase follows these component design principles:
+
+1. **Functional Components**: All components use React's functional component pattern with hooks
+2. **Props-based Configuration**: Components receive explicit props for configuration
+3. **Unidirectional Data Flow**: Data flows down through props, while events flow up through callbacks
+4. **Separation of Concerns**: Components focus on UI rendering, delegating business logic to hooks and contexts
+
+#### Component Composition Patterns
+
+UI components are designed for composition:
+
+```tsx
+// Parent component composing child components
+export default function CampaignPage({ params }: CampaignPageProps) {
+  // ...state and effects...
+  
+  return (
+    <main className="min-h-screen bg-gray-100">
+      <ThemedLayout theme={effectiveTheme}>
+        <BrandHeader brand={brand} theme={theme} />
+        
+        {loading ? (
+          <LoadingSpinner message="Loading products..." size="lg" />
+        ) : (
+          <>
+            <SwipeContainer
+              products={products}
+              campaignId={campaign.id}
+              campaignName={campaign.name}
+              campaignSlug={campaign.slug}
+              brandId={brand.id}
+              brandName={brand.name}
+              brandSlug={brand.slug}
+            />
+            <CardIndicators 
+              totalCards={products.length} 
+              remainingCards={remainingCards} 
+            />
+          </>
+        )}
+      </ThemedLayout>
+    </main>
+  );
+}
+```
+
+#### Prop Interface Conventions
+
+Components define explicit prop interfaces with clear naming:
+
+```tsx
+// Clear prop interface naming with Component + Props pattern
+interface ProductCardProps {
+  product: Product;
+  onSwipe: (direction: 'left' | 'right') => void;
+  index: number;
+  isTop: boolean;
+  campaignId?: string;
+  campaignName?: string;
+  campaignSlug?: string;
+  brandId?: string;
+  brandName?: string;
+  brandSlug?: string;
+  style?: React.CSSProperties;
+}
+
+export default function ProductCard({
+  product,
+  onSwipe,
+  index,
+  isTop,
+  // ...other props
+}: ProductCardProps) {
+  // Component implementation
+}
+```
+
+#### State Management Patterns
+
+The codebase implements several state management patterns:
+
+1. **Local Component State**: For UI-specific state
+   ```tsx
+   const [isDragging, setIsDragging] = useState(false);
+   const [dragX, setDragX] = useState(0);
+   ```
+
+2. **React Context**: For shared state across component trees
+   ```tsx
+   // Context Provider
+   export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+     const [theme, setTheme] = useState<BrandTheme>(defaultTheme);
+     
+     return (
+       <ThemeContext.Provider value={{ theme, setTheme }}>
+         {children}
+       </ThemeContext.Provider>
+     );
+   };
+   
+   // Context Consumer via Hook
+   const { theme } = useTheme();
+   ```
+
+3. **Refs for Values Without Re-renders**: To track values without causing re-renders
+   ```tsx
+   const dragUpdateRef = useRef<number>(0);
+   // Update ref without re-rendering
+   dragUpdateRef.current = info.offset.x;
+   ```
+
+### 📝 Server Actions and Form Handling
+
+SVYP implements a consistent pattern for handling forms and server actions, ensuring a smooth user experience with appropriate loading states and validation.
+
+#### Server Action Structure
+
+API routes follow a consistent structure:
+
+```typescript
+// Server action structure in API route
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Authentication/Authorization check
+    const sessionCookie = request.cookies.get('session')?.value;
+    const { isSuperAdmin } = await verifyAdminSession(sessionCookie);
+    
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // 2. Input parsing and validation
+    const { email, password, displayName, role, brandIds } = await request.json();
+    
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    }
+    
+    // 3. Core business logic
+    const user = await createUser({
+      email,
+      password,
+      displayName,
+      role,
+      brandIds
+    });
+    
+    // 4. Success response
+    return NextResponse.json({ user });
+  } catch (error) {
+    // 5. Error handling
+    console.error('Error creating user:', error);
+    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
+  }
+}
+```
+
+#### Form State Management
+
+Forms in the application follow a consistent state management pattern:
+
+```tsx
+// Form state management pattern
+export default function EmailCaptureForm({ onSubscribe }: EmailCaptureFormProps) {
+  // 1. Input state
+  const [email, setEmail] = useState('');
+  
+  // 2. Validation state
+  const [emailError, setEmailError] = useState('');
+  const [consentError, setConsentError] = useState('');
+  
+  // 3. Form state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  
+  // 4. Form submission handler
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setEmailError('');
+    setConsentError('');
+    
+    // Validation logic
+    if (!email) {
+      setEmailError('Email is required');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Further validation...
+    
+    // Submit form
+    trackEmailSubscription(email);
+    
+    // Simulate API call with a timeout
+    setTimeout(() => {
+      setIsSubmitting(false);
+      onSubscribe(email);
+    }, 1000);
+  };
+  
+  // 5. Form rendering with state-based UI
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className={emailError ? 'border-red-500' : 'border-gray-300'}
+        disabled={isSubmitting}
+      />
+      {emailError && <p className="text-red-500">{emailError}</p>}
+      
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className={isSubmitting ? 'opacity-50' : ''}
+      >
+        {isSubmitting ? 'Subscribing...' : 'Subscribe'}
+      </button>
+    </form>
+  );
+}
+```
+
+#### Loading State Implementation
+
+Loading states are consistently implemented across the application:
+
+```tsx
+// Component-level loading state
+const [loading, setLoading] = useState(true);
+
+// Fetch data with loading state
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchSomeData();
+      setData(data);
+    } catch (error) {
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  loadData();
+}, []);
+
+// Conditional rendering based on loading state
+return (
+  <div>
+    {loading ? (
+      <LoadingSpinner message="Loading data..." size="lg" />
+    ) : (
+      // Actual content
+    )}
+  </div>
+);
+```
+
+#### Validation Approaches
+
+The application implements several validation strategies:
+
+1. **Client-side Validation**: Immediate feedback during form entry
+   ```tsx
+   // Email validation regex
+   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+   
+   if (!emailRegex.test(email)) {
+     setEmailError('Please enter a valid email address');
+     return;
+   }
+   ```
+
+2. **Server-side Validation**: Second layer of validation for security
+   ```typescript
+   // Validate required fields in API route
+   if (!email || !password) {
+     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+   }
+   ```
+
+3. **Constraint Validation**: Using HTML5 form constraints
+   ```tsx
+   <input
+     type="email"
+     required
+     minLength={5}
+     maxLength={100}
+   />
+   ```
+
+#### Page Revalidation Techniques
+
+The application implements several patterns for page revalidation:
+
+1. **Client-side Revalidation**: After successful form submissions
+   ```tsx
+   // After form submission, refresh data
+   const handleSubmitSuccess = () => {
+     setIsSubmitting(false);
+     
+     // Refresh data
+     loadData();
+   };
+   ```
+
+2. **Route-based Revalidation**: Using Next.js route refreshing
+   ```typescript
+   // After successful update
+   await updateBrand(brandId, brandData);
+   
+   // Redirect to refresh the page
+   router.push('/admin/brands');
+   ```
+
+## 🔍 Conclusion
+
+This document outlines the primary tactical design patterns used throughout the SVYP codebase. By following these established patterns, developers can maintain consistency in code style, architecture, and user experience across the application. The patterns documented here represent the current best practices for the project and should be followed when implementing new features or modifying existing ones.

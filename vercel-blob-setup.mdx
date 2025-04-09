@@ -1,0 +1,113 @@
+---
+title: "Vercel Blob Setup"
+description: "This project uses Vercel Blob Storage for image uploads in the admin panel. Follow these steps to set up Vercel Blob for your development and produ..."
+---
+
+# Vercel Blob Storage Setup
+
+This project uses Vercel Blob Storage for image uploads in the admin panel. Follow these steps to set up Vercel Blob for your development and production environments.
+
+## Prerequisites
+
+- A Vercel account
+- Your project deployed on Vercel (or ready to be deployed)
+
+## Setup Steps
+
+### 1. Get a Vercel Blob Token
+
+1. Go to your Vercel dashboard: https://vercel.com/dashboard
+2. Select your project
+3. Go to the "Storage" tab in the project settings
+4. Select "Blob" and click "Create" if you haven't already set it up
+5. Once created, you can find your token by clicking on the Blob store and then viewing the "Tokens" section
+6. Create a new token with read-write permissions if you don't already have one
+
+### 2. Add Environment Variables
+
+Add the following environment variable to your project:
+
+```
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_read_write_token
+```
+
+Add this to:
+- Your local `.env.local` file for development
+- Your Vercel project environment variables for production
+
+### 3. Implementation Details
+
+The implementation consists of:
+
+1. **API Route**: An API endpoint at `/api/upload` that handles file uploads to Vercel Blob
+2. **Admin UI**: A file upload component in the admin product form
+3. **Image Storage**: Images are stored in Vercel Blob and their URLs are saved in Firebase
+
+The admin panel now supports direct image uploads. When creating or editing a product:
+
+1. Click the file input in the "Product Image" section
+2. Select an image from your computer
+3. The image will be automatically uploaded to Vercel Blob
+4. Once uploaded, you'll see a preview of the image
+5. The image URL will be stored in the product data when you save
+
+### 4. Technical Implementation
+
+The implementation uses:
+
+- `@vercel/blob` package for interacting with Vercel Blob storage
+- Next.js API routes for handling the upload process
+- React state management for handling the upload UI
+
+The image upload component replaces the previous URL input field, allowing for a more user-friendly experience while maintaining compatibility with the existing product data structure.
+
+### 5. Image Optimization and Domain Handling
+
+To handle images from various domains (including those not configured in Next.js), we've implemented:
+
+1. **SafeImage Component**: A wrapper around Next.js Image component that:
+   - Automatically detects if an image's domain is configured in Next.js
+   - Uses Next.js Image directly for configured domains
+   - Routes images from non-configured domains through a proxy API
+   - Provides fallback handling for broken images
+
+2. **Image Proxy API**: A server-side API route at `/api/proxy-image` that:
+   - Fetches images from any external domain
+   - Serves them through your own domain (which Next.js always accepts)
+   - Includes proper caching headers for performance
+
+This approach allows you to:
+- Display images from any source without modifying Next.js configuration
+- Benefit from Next.js image optimization for configured domains
+- Handle errors gracefully with fallback images
+
+#### Using the SafeImage Component
+
+Replace the standard Next.js Image component with SafeImage:
+
+```tsx
+import SafeImage from '@/components/SafeImage';
+
+// Use just like Next.js Image component
+<SafeImage 
+  src="https://example.com/image.jpg" 
+  alt="Description" 
+  width={300} 
+  height={300}
+  fallbackSrc="/placeholder-image.jpg" // Optional
+/>
+```
+
+### Troubleshooting
+
+If you encounter a 403 error during upload:
+
+1. Check that your `BLOB_READ_WRITE_TOKEN` is correctly set and has the proper permissions
+2. Verify that the token is for the correct Vercel project
+3. Make sure your Vercel project has Blob storage enabled
+
+If you see errors about unconfigured image domains:
+
+1. Make sure you're using the `SafeImage` component instead of the standard Next.js `Image` component
+2. Check the browser console for any errors related to the proxy API
+3. Verify that the `/api/proxy-image` route is working correctly

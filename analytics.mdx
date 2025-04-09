@@ -1,0 +1,245 @@
+---
+title: "Analytics"
+description: "- [🔧 Mixpanel Setup](#-mixpanel-setup)"
+---
+
+# 📊 Analytics Implementation
+
+## 📋 Contents
+
+- [🔧 Mixpanel Setup](#-mixpanel-setup)
+- [👤 User Identification](#-user-identification)
+- [📈 Events Catalogue](#-events-catalogue)
+- [🔄 Data Flow](#-data-flow)
+- [⚙️ Implementation Details](#-implementation-details)
+- [💡 Development Guidelines](#-development-guidelines)
+
+## 🔧 Mixpanel Setup
+
+### Configuration
+
+The SVYP application uses Mixpanel for analytics tracking. The configuration is managed through environment variables for security:
+
+1. Create a `.env.local` file with your Mixpanel token:
+   ```
+   NEXT_PUBLIC_MIXPANEL_TOKEN=your_token_here
+   ```
+
+2. The Mixpanel token is referenced in `.env.example`:
+   ```
+   NEXT_PUBLIC_MIXPANEL_TOKEN=your_mixpanel_token_here
+   ```
+
+3. Initialisation happens in `src/utils/analytics.ts`:
+   ```typescript
+   mixpanel.init(process.env.NEXT_PUBLIC_MIXPANEL_TOKEN || '');
+   ```
+
+## 👤 User Identification
+
+### Anonymous User Tracking
+
+The application creates and maintains persistent user identifiers even for anonymous users:
+
+```typescript
+// Generate a unique ID for the user that persists across sessions
+export const getUserId = () => {
+  let userId = localStorage.getItem('mixpanel_user_id');
+  if (!userId) {
+    userId = `user_${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem('mixpanel_user_id', userId);
+  }
+  return userId;
+};
+```
+
+### User Properties
+
+When a user provides their email (e.g., through email subscription or reward claiming), we enhance their profile:
+
+```typescript
+// Set user properties when email is provided
+mixpanel.people.set({
+  $email: email,
+  $last_login: new Date().toISOString(),
+});
+```
+
+### Session Management
+
+- User sessions are tracked via the `MixpanelProvider` component
+- Product view events are deduplicated within a session using `sessionStorage`
+- Session data is reset on page refresh
+
+## 📈 Events Catalogue
+
+### Product Interaction Events
+
+| Event Name | Trigger | Key Properties | File Location |
+|------------|---------|-----------------|------------|
+| **Product Viewed** | User sees a product card | `product_id`, `product_name`, `campaign_id`, `brand_id` | `ProductCard.tsx` |
+| **Like** | User swipes right on product | `product_id`, `product_name`, `view_duration` | `ProductCard.tsx` |
+| **Dislike** | User swipes left on product | `product_id`, `product_name`, `view_duration` | `ProductCard.tsx` |
+| **Buy Now Clicked** | User clicks buy button | `product_id`, `product_name`, `campaign_id` | `ProductCard.tsx` |
+| **More Info Viewed** | User clicks info button | `product_id`, `product_name`, `campaign_id` | `ProductCard.tsx` |
+
+### Campaign Events
+
+| Event Name | Trigger | Key Properties | File Location |
+|------------|---------|-----------------|------------|
+| **Campaign Viewed** | User visits a campaign page | `campaign_id`, `campaign_name`, `campaign_slug`, `brand_id` | `[slug]/[campaignSlug]/page.tsx` |
+| **Rapid Swiping** | User swipes through products rapidly | `swipe_count`, `average_swipe_time`, `threshold` | `SwipeContainer.tsx` |
+
+### Reward Events
+
+| Event Name | Trigger | Key Properties | File Location |
+|------------|---------|-----------------|------------|
+| **Reward Shown** | Reward displayed to user | `brand_id`, `brand_name`, `campaign_id` | `RewardCard.tsx` |
+| **Reward Claimed** | User claims a reward | `reward_id`, `reward_name`, `reward_code`, `user_email` | `RewardCard.tsx` |
+| **Reward Sent** | Reward sent via email | `reward_id`, `reward_name`, `user_email` | `api/rewards/send-email/route.ts` |
+| **No Rewards Available** | User eligible but no rewards available | `brand_id`, `brand_name`, `campaign_id` | `api/rewards/send-email/route.ts` |
+
+### User Events
+
+| Event Name | Trigger | Key Properties | File Location |
+|------------|---------|-----------------|------------|
+| **Email Subscription** | User subscribes with email | `email`, `timestamp` | `EmailCaptureForm.tsx` |
+| **POPIA Consent** | User consents to data usage | `user_email`, `brand_id`, `timestamp` | `EmailCaptureForm.tsx` |
+
+## 🔄 Data Flow
+
+```
+┌──────────────────┐     ┌───────────────────┐     ┌───────────────────┐
+│                  │     │                   │     │                   │
+│  User Interface  │────▶│  Analytics Utils  │────▶│  Mixpanel Service │
+│                  │     │                   │     │                   │
+└──────────────────┘     └───────────────────┘     └───────────────────┘
+        │                          ▲                         │
+        │                          │                         │
+        ▼                          │                         ▼
+┌──────────────────┐               │               ┌───────────────────┐
+│                  │               │               │                   │
+│   Local Storage  │───────────────┘               │    Mixpanel API   │
+│                  │                               │                   │
+└──────────────────┘                               └───────────────────┘
+```
+
+### Data Flow Explanation
+
+1. **User Interactions** trigger events in UI components (ProductCard, RewardCard, etc.)
+2. **Component Handlers** call appropriate tracking functions from `analytics.ts`
+3. **Analytics Utils** process the event data and send it to Mixpanel
+4. **User Identification** is maintained through LocalStorage
+5. **Mixpanel API** receives the event data and stores it for analysis
+6. **Mixpanel Dashboard** provides visualisation and reporting of the collected data
+
+## ⚙️ Implementation Details
+
+### Event Properties Structure
+
+All product-related events use a consistent property structure:
+
+```typescript
+interface ProductEventProps {
+  productId: string;         // Unique identifier for the product
+  productName: string;       // Display name of the product
+  campaignId?: string;       // ID of the campaign containing the product
+  campaignName?: string;     // Name of the campaign
+  campaignSlug?: string;     // URL-friendly identifier for the campaign
+  brandId?: string;          // ID of the brand owning the campaign
+  brandName?: string;        // Name of the brand
+  brandSlug?: string;        // URL-friendly identifier for the brand
+  view_duration?: number;    // Time spent viewing product before action (ms)
+}
+```
+
+### Tracking Implementation Examples
+
+#### Product View Tracking
+
+```typescript
+// In ProductCard.tsx
+useEffect(() => {
+  if (isTop) {
+    // Start the timer when this card becomes the top card
+    viewStartTimeRef.current = Date.now();
+
+    if (!hasBeenViewed) {
+      trackProductView({
+        productId: product.id,
+        productName: product.name,
+        campaignId,
+        campaignName,
+        campaignSlug,
+        brandId,
+        brandName,
+        brandSlug,
+      });
+      sessionStorage.setItem(`viewed_${product.id}`, 'true');
+    }
+  }
+}, [isTop /* dependencies */]);
+```
+
+#### Reward Tracking
+
+```typescript
+// In api/rewards/send-email/route.ts
+if (reward) {
+  // Track that a reward was sent
+  trackRewardSent({
+    rewardId: reward.id,
+    rewardName: reward.title,
+    rewardCode: reward.code,
+    brandId,
+    brandName,
+    campaignId,
+    campaignName,
+    userEmail: email,
+  });
+}
+```
+
+### Component Integration
+
+Analytics tracking is integrated into the following components:
+
+- **ProductCard.tsx**: Tracks product views, likes, dislikes, and button clicks
+- **SwipeContainer.tsx**: Tracks swiping behaviour and rapid swiping detection
+- **RewardCard.tsx**: Tracks reward display and claims
+- **EmailCaptureForm.tsx**: Tracks email submission and consent
+- **[slug]/[campaignSlug]/page.tsx**: Tracks campaign page views
+- **api/rewards/send-email/route.ts**: Tracks reward emails and availability
+
+## 💡 Development Guidelines
+
+### Adding New Events
+
+When adding a new event to track:
+
+1. Define the event name (use clear, descriptive names in Title Case)
+2. Define the properties to track (use snake_case for property names)
+3. Add the tracking function to `src/utils/analytics.ts`
+4. Update this documentation with the new event details
+
+### Best Practices
+
+- **Property Consistency**: Use consistent property names across similar events
+- **Avoid PII**: Never track personally identifiable information unless explicitly consented
+- **Performance**: Place tracking calls after critical UI operations to avoid impacting performance
+- **Error Handling**: Wrap tracking in try/catch blocks to prevent failures from affecting the UI
+- **Testing**: Verify events are being sent correctly using the Mixpanel Live View during development
+
+### Security Considerations
+
+- The Mixpanel token should never be committed to the repository
+- Always use the environment variable `NEXT_PUBLIC_MIXPANEL_TOKEN`
+- Sensitive operations should use server-side tracking when possible
+- Ensure POPIA/GDPR compliance by obtaining appropriate user consent
+
+### Debugging
+
+- Use Mixpanel Live View to verify events in real-time during development
+- Check browser console for any Mixpanel initialisation errors
+- Verify that your environment variables are correctly set
+- Restart the Next.js development server after modifying environment variables

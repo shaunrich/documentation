@@ -1,0 +1,159 @@
+---
+title: "User Brand Linking"
+description: "The SVYP platform implements a comprehensive user-brand linking system that controls access to brand-related resources throughout the application. ..."
+---
+
+# User-Brand Linking Documentation
+
+## Overview
+
+The SVYP platform implements a comprehensive user-brand linking system that controls access to brand-related resources throughout the application. This document explains how brands are linked to users, how these links are managed, and how they affect the user interface in the admin section.
+
+## User Roles and Brand Access
+
+The platform has three primary user types with different levels of brand access:
+
+1. **Super Admin (`super-admin`)**: 
+   - Can view and manage all brands in the system
+   - Can create, edit, and delete any brand
+   - Can link/unlink brands to any user
+   - Has full visibility across all brand-related data
+
+2. **Admin (`admin`)**: 
+   - Can view and manage all brands in the system
+   - Can create, edit, and delete any brand
+   - Cannot manage user roles or link/unlink brands to users (reserved for super-admins)
+
+3. **Regular User (no specific role)**: 
+   - Can only view and manage brands they are linked to
+   - When creating a new brand, automatically becomes linked to that brand
+   - Cannot see or manage brands they are not linked to
+
+## Technical Implementation
+
+### User-Brand Linking Mechanism
+
+User-brand links are stored as custom claims in Firebase Authentication:
+
+- Each user has a `brandIds` array in their custom claims containing IDs of linked brands
+- This array is managed through the Firebase Admin SDK
+- The links are retrieved during authentication and stored in the AuthContext
+
+### API Endpoints
+
+1. **`/api/users/[uid]/route.ts`**: 
+   - PATCH endpoint with `updateBrands` action (super-admin only)
+   - Used to update brand links for any user
+
+2. **`/api/users/brands/route.ts`**: 
+   - POST endpoint to link a brand to the current user
+   - Used when a non-admin user creates a new brand
+   - Automatically links the newly created brand to the user
+
+3. **`/api/auth/me/route.ts`**: 
+   - GET endpoint to retrieve current user information
+   - Returns `brandIds` array containing IDs of linked brands
+
+### Automatic Brand Linking
+
+When a non-admin user creates a new brand:
+
+1. The brand is created in the database
+2. The system automatically calls the `/api/users/brands` endpoint
+3. The new brand ID is added to the user's `brandIds` array
+4. The user's role is refreshed to update the UI with the new brand link
+
+## Impact on Admin UI
+
+### Brands Admin Page
+
+- **For Super Admins and Admins**: 
+  - Displays all brands in the system
+  - No filtering is applied based on user links
+
+- **For Regular Users**: 
+  - Only displays brands linked to the user
+  - Filtered based on the `brandIds` array in the user's claims
+  - Newly created brands appear immediately after creation
+
+### Products Admin Page
+
+- Includes a "Filter by brand" component
+- For regular users, this filter only shows brands linked to the user
+- For admins and super-admins, it shows all brands
+
+### Campaigns Admin Page
+
+- Similar to the Products page, includes a "Filter by brand" component
+- Filtering respects the user's brand links and role
+
+## User Experience Flow
+
+### Regular User Flow
+
+1. User logs in and accesses the Brands admin page
+2. Only sees brands they are linked to
+3. Creates a new brand
+4. System automatically links the brand to the user
+5. The new brand appears in their brand list
+6. User can now manage this brand and its associated products/campaigns
+
+### Admin User Flow
+
+1. Admin logs in and accesses the Brands admin page
+2. Sees all brands in the system
+3. Can manage any brand regardless of links
+4. When creating a new brand, no automatic linking is needed
+
+## Integration with Existing Systems
+
+### Brand and Campaign Hierarchy
+
+The user-brand linking system integrates with the existing brand-campaign hierarchy:
+
+- Brands serve as the top-level organizational unit
+- Campaigns are associated with brands via `brandId`
+- Products can be associated with both brands and campaigns
+
+This hierarchical structure is reflected in the URL routing: `/${brand.slug}/${campaign.slug}`
+
+### Role-Based Access Control
+
+The user-brand linking system extends the existing role-based access control system:
+
+- Super-admin and admin roles have system-wide permissions
+- Regular users have permissions scoped to their linked brands
+- Authentication is required for all admin operations
+
+## Best Practices
+
+1. **Super Admin Management**: 
+   - Super admins should regularly audit user-brand links
+   - Use the User Management page to adjust brand links as needed
+
+2. **Brand Creation**: 
+   - When creating brands for specific users, consider who should have access
+   - For brands that should be private to specific users, ensure proper linking
+
+3. **Performance Considerations**: 
+   - Brand filtering is done client-side for better performance
+   - The system uses memoization to prevent unnecessary re-renders
+
+## Troubleshooting
+
+### Common Issues
+
+1. **User cannot see a brand**: 
+   - Check if the user is linked to the brand
+   - Verify the user's role in the User Management page
+   - Try refreshing the user's session
+
+2. **Brand not automatically linked**: 
+   - Check browser console for API errors
+   - Verify the user doesn't have admin or super-admin role
+   - Check network requests to `/api/users/brands` endpoint
+
+3. **Brand filtering not working**: 
+   - Ensure the AuthContext is properly loaded
+   - Check if `brandIds` is correctly populated
+   - Verify the filtering logic in the component

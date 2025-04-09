@@ -1,0 +1,569 @@
+---
+title: "API"
+description: "- [🔐 Authentication API](#-authentication-api)"
+---
+
+# 🌐 SVYP API Documentation
+
+## 📋 Contents
+
+- [🔐 Authentication API](#-authentication-api)
+  - [Get Current User](#get-current-user)
+  - [Create Session](#create-session)
+  - [Delete Session (Logout)](#delete-session-logout)
+
+- [👥 Users API](#-users-api)
+  - [Get All Users](#get-all-users)
+  - [Create User](#create-user)
+  - [Delete User](#delete-user)
+  - [Update User](#update-user)
+
+- [🎁 Rewards API](#-rewards-api)
+  - [Send Reward Email](#send-reward-email)
+
+- [📤 Upload API](#-upload-api)
+  - [Upload File](#upload-file)
+
+## 🔐 Authentication API
+
+Authentication endpoints manage user sessions and identity verification throughout the application.
+
+### Get Current User
+
+Retrieves information about the currently authenticated user based on their session cookie.
+
+**Endpoint:** `GET /api/auth/me`
+
+**Description:** Returns the authentication status and profile information of the current user. This endpoint is used to verify if a user is logged in and retrieve their role and permissions.
+
+**Request Parameters:**
+- No request body parameters required
+- Authentication via session cookie (automatically sent with request)
+
+**Response Parameters:**
+- **authenticated** (boolean): Indicates if the user is authenticated
+- **uid** (string): The user's unique identifier (only if authenticated)
+- **email** (string): The user's email address (only if authenticated)
+- **role** (string): The user's role ('super-admin', 'admin', or 'user') (only if authenticated)
+- **isAdmin** (boolean): Flag indicating if user has admin privileges (only if authenticated)
+- **isSuperAdmin** (boolean): Flag indicating if user has super-admin privileges (only if authenticated)
+- **brandIds** (string[]): Array of brand IDs the user has access to (only if authenticated)
+- **error** (string): Error message (only if an error occurred)
+
+**Example Response (Authenticated):**
+```json
+{
+  "authenticated": true,
+  "uid": "user123",
+  "email": "admin@example.com",
+  "role": "admin",
+  "isAdmin": true,
+  "isSuperAdmin": false,
+  "brandIds": ["brand1", "brand2"]
+}
+```
+
+**Example Response (Not Authenticated):**
+```json
+{
+  "authenticated": false
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "authenticated": false,
+  "error": "Session invalid or expired"
+}
+```
+
+**Status Codes:**
+- **200 OK**: Request successful (authenticated or not authenticated)
+- **401 Unauthorized**: Session is invalid or expired
+- **500 Internal Server Error**: Server encountered an error
+
+### Create Session
+
+Creates a new authenticated session for a user.
+
+**Endpoint:** `POST /api/auth/session`
+
+**Description:** Authenticates a user with their Firebase ID token and creates a session cookie. This endpoint is typically called after a successful client-side Firebase Authentication.
+
+**Request Parameters:**
+- **idToken** (string): Firebase ID token obtained from client-side authentication
+
+**Response Parameters:**
+- **success** (boolean): Indicates if session creation was successful
+- **uid** (string): The authenticated user's unique identifier
+- **role** (string): The user's role ('super-admin', 'admin', or 'user')
+- **brandIds** (string[]): Array of brand IDs the user has access to
+- **error** (string): Error message (only if an error occurred)
+
+**Example Request:**
+```json
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFlOWdkazcifQ..."
+}
+```
+
+**Example Response (Success):**
+```json
+{
+  "success": true,
+  "uid": "user123",
+  "role": "admin",
+  "brandIds": ["brand1", "brand2"]
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "error": "ID token is required"
+}
+```
+
+**Status Codes:**
+- **200 OK**: Session created successfully
+- **400 Bad Request**: Missing required parameters
+- **401 Unauthorized**: Invalid ID token
+- **500 Internal Server Error**: Server encountered an error
+
+### Delete Session (Logout)
+
+Deletes the current user session (logs out the user).
+
+**Endpoint:** `DELETE /api/auth/session`
+
+**Description:** Removes the session cookie to log out the currently authenticated user.
+
+**Request Parameters:**
+- No request body parameters required
+- Authentication via session cookie (automatically sent with request)
+
+**Response Parameters:**
+- **success** (boolean): Indicates if logout was successful
+
+**Example Response:**
+```json
+{
+  "success": true
+}
+```
+
+**Status Codes:**
+- **200 OK**: Logout successful
+
+## 👥 Users API
+
+User management endpoints for admin operations.
+
+### Get All Users
+
+Retrieves a list of all admin users in the system.
+
+**Endpoint:** `GET /api/users`
+
+**Description:** Returns a list of all admin users in the system. This endpoint is restricted to super-admin users only.
+
+**Request Parameters:**
+- No request body parameters required
+- Authentication via session cookie (automatically sent with request)
+
+**Response Parameters:**
+- **users** (array): List of user objects with their details
+  - **uid** (string): User's unique identifier
+  - **email** (string): User's email address
+  - **displayName** (string): User's display name
+  - **disabled** (boolean): Whether the user account is disabled
+  - **role** (string): User's role ('super-admin' or 'admin')
+  - **brandIds** (string[]): Array of brand IDs the user has access to
+  - **lastLoginAt** (string): Timestamp of last login
+  - **createdAt** (string): Timestamp of account creation
+- **error** (string): Error message (only if an error occurred)
+
+**Example Response (Success):**
+```json
+{
+  "users": [
+    {
+      "uid": "user123",
+      "email": "admin@example.com",
+      "displayName": "Admin User",
+      "disabled": false,
+      "role": "admin",
+      "brandIds": ["brand1", "brand2"],
+      "lastLoginAt": "2023-01-01T00:00:00.000Z",
+      "createdAt": "2022-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "error": "Unauthorized - Only super-admins can view users"
+}
+```
+
+**Status Codes:**
+- **200 OK**: Request successful
+- **401 Unauthorized**: User is not authenticated
+- **403 Forbidden**: User does not have sufficient privileges
+- **500 Internal Server Error**: Server encountered an error
+
+### Create User
+
+Creates a new admin user.
+
+**Endpoint:** `POST /api/users`
+
+**Description:** Creates a new admin user with the specified details. This endpoint is restricted to super-admin users only.
+
+**Request Parameters:**
+- **email** (string, required): Email address for the new user
+- **password** (string, required): Initial password for the new user
+- **displayName** (string, optional): Display name for the new user
+- **role** (string, optional): Role for the new user ('super-admin' or 'admin')
+- **brandIds** (string[], optional): Array of brand IDs the user will have access to
+
+**Response Parameters:**
+- **user** (object): The newly created user object
+  - **uid** (string): The new user's unique identifier
+  - **email** (string): The new user's email address
+  - **displayName** (string): The new user's display name
+  - **role** (string): The new user's role
+  - **brandIds** (string[]): Array of brand IDs the user has access to
+- **error** (string): Error message (only if an error occurred)
+
+**Example Request:**
+```json
+{
+  "email": "newadmin@example.com",
+  "password": "SecurePassword123",
+  "displayName": "New Admin",
+  "role": "admin",
+  "brandIds": ["brand1", "brand2"]
+}
+```
+
+**Example Response (Success):**
+```json
+{
+  "user": {
+    "uid": "newuser123",
+    "email": "newadmin@example.com",
+    "displayName": "New Admin",
+    "role": "admin",
+    "brandIds": ["brand1", "brand2"]
+  }
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "error": "Email and password are required"
+}
+```
+
+**Status Codes:**
+- **200 OK**: User created successfully
+- **400 Bad Request**: Missing required parameters
+- **401 Unauthorized**: User is not authenticated
+- **403 Forbidden**: User does not have sufficient privileges
+- **500 Internal Server Error**: Server encountered an error
+
+### Delete User
+
+Deletes a specified user.
+
+**Endpoint:** `DELETE /api/users/[uid]`
+
+**Description:** Permanently deletes the user with the specified UID. This endpoint is restricted to super-admin users only.
+
+**Request Parameters:**
+- **uid** (string, path parameter): The unique identifier of the user to delete
+- No request body parameters required
+- Authentication via session cookie (automatically sent with request)
+
+**Response Parameters:**
+- **success** (boolean): Indicates if the user was successfully deleted
+- **error** (string): Error message (only if an error occurred)
+
+**Example Response (Success):**
+```json
+{
+  "success": true
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "error": "Only super-admins can delete users"
+}
+```
+
+**Status Codes:**
+- **200 OK**: User deleted successfully
+- **401 Unauthorized**: User is not authenticated
+- **403 Forbidden**: User does not have sufficient privileges
+- **500 Internal Server Error**: Server encountered an error
+
+### Update User
+
+Updates a specified user's details or performs user management actions.
+
+**Endpoint:** `PATCH /api/users/[uid]`
+
+**Description:** Updates various aspects of a user account, including password reset, account status, role, and brand associations. This endpoint is restricted to super-admin users only.
+
+**Request Parameters:**
+- **uid** (string, path parameter): The unique identifier of the user to update
+- **action** (string, required): The type of update to perform. One of:
+  - `resetPassword`: Reset the user's password
+  - `updateStatus`: Enable or disable the user account
+  - `updateRole`: Change the user's role
+  - `updateBrands`: Update the brands the user has access to
+- Additional parameters based on action:
+  - For `resetPassword`:
+    - None (generates a random password)
+  - For `updateStatus`:
+    - **disabled** (boolean): Whether to disable the account
+  - For `updateRole`:
+    - **role** (string): The new role ('super-admin' or 'admin')
+  - For `updateBrands`:
+    - **brandIds** (string[]): Array of brand IDs the user will have access to
+
+**Response Parameters:**
+- **success** (boolean): Indicates if the update was successful
+- **newPassword** (string): Only returned for password reset actions
+- **error** (string): Error message (only if an error occurred)
+
+**Example Request (Reset Password):**
+```json
+{
+  "action": "resetPassword"
+}
+```
+
+**Example Request (Update Status):**
+```json
+{
+  "action": "updateStatus",
+  "disabled": true
+}
+```
+
+**Example Request (Update Role):**
+```json
+{
+  "action": "updateRole",
+  "role": "admin"
+}
+```
+
+**Example Request (Update Brands):**
+```json
+{
+  "action": "updateBrands",
+  "brandIds": ["brand1", "brand3", "brand5"]
+}
+```
+
+**Example Response (Success - Reset Password):**
+```json
+{
+  "success": true,
+  "newPassword": "randomgeneratedpassword"
+}
+```
+
+**Example Response (Success - Other Actions):**
+```json
+{
+  "success": true
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "error": "Invalid action specified"
+}
+```
+
+**Status Codes:**
+- **200 OK**: Update successful
+- **400 Bad Request**: Missing or invalid parameters
+- **401 Unauthorized**: User is not authenticated
+- **403 Forbidden**: User does not have sufficient privileges
+- **500 Internal Server Error**: Server encountered an error
+
+## 🎁 Rewards API
+
+Endpoints related to the rewards system.
+
+### Send Reward Email
+
+Sends a reward email to a user.
+
+**Endpoint:** `POST /api/rewards/send-email`
+
+**Description:** Selects a reward from the available rewards for a brand and sends it to the provided email address. This endpoint also handles tracking of rewards usage.
+
+**Request Parameters:**
+- **email** (string, required): Recipient's email address
+- **brandId** (string, required): ID of the brand offering the reward
+- **brandName** (string, required): Name of the brand for display in the email
+- **campaignId** (string, optional): ID of the campaign context
+- **campaignName** (string, optional): Name of the campaign for display in the email
+- **brandSlug** (string, optional): Slug of the brand for URL generation
+- **campaignSlug** (string, optional): Slug of the campaign for URL generation
+- **likedProducts** (array, optional): Array of products the user has liked
+  - **id** (string): Product ID
+  - **name** (string): Product name
+  - **description** (string): Product description
+  - **price** (number): Product price
+  - **imageUrl** (string): URL to product image
+
+**Response Parameters:**
+- **success** (boolean): Indicates if the email was sent successfully
+- **rewardSent** (boolean): Indicates if a reward was available and sent
+- **message** (string): Description of the outcome
+- **reward** (object, optional): The reward that was sent (if available)
+  - **id** (string): Reward ID
+  - **title** (string): Reward title
+  - **description** (string): Reward description
+  - **code** (string): Reward redemption code
+  - **expiryDate** (number): Timestamp when the reward expires
+- **error** (string): Error message (only if an error occurred)
+
+**Example Request:**
+```json
+{
+  "email": "customer@example.com",
+  "brandId": "brand123",
+  "brandName": "Example Brand",
+  "campaignId": "campaign456",
+  "campaignName": "Summer Sale",
+  "brandSlug": "example-brand",
+  "campaignSlug": "summer-sale",
+  "likedProducts": [
+    {
+      "id": "product789",
+      "name": "Premium Widget",
+      "description": "A high-quality widget",
+      "price": 29.99,
+      "imageUrl": "https://example.com/images/widget.jpg"
+    }
+  ]
+}
+```
+
+**Example Response (Success with Reward):**
+```json
+{
+  "success": true,
+  "rewardSent": true,
+  "message": "Reward email sent successfully",
+  "reward": {
+    "id": "reward123",
+    "title": "10% Discount",
+    "description": "10% off your next purchase",
+    "code": "DISCOUNT10",
+    "expiryDate": 1672531199000
+  }
+}
+```
+
+**Example Response (Success but No Rewards Available):**
+```json
+{
+  "success": true,
+  "rewardSent": false,
+  "message": "No rewards available for this brand"
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "error": "Email is required"
+}
+```
+
+**Status Codes:**
+- **200 OK**: Request processed successfully (even if no reward was available)
+- **400 Bad Request**: Missing required parameters
+- **500 Internal Server Error**: Server encountered an error
+
+## 📤 Upload API
+
+File upload management endpoints.
+
+### Upload File
+
+Uploads a file to Vercel Blob storage.
+
+**Endpoint:** `POST /api/upload`
+
+**Description:** Uploads a file (typically an image) to Vercel Blob storage and returns a public URL to access the file.
+
+**Request Parameters:**
+- **file** (File, required): The file to upload (sent as multipart/form-data)
+
+**Response Parameters:**
+- **url** (string): Public URL to access the uploaded file
+- **pathname** (string): Path component of the URL
+- **contentType** (string): MIME type of the uploaded file
+- **contentDisposition** (string): Content disposition header value
+- **error** (string): Error message (only if an error occurred)
+
+**Example Response (Success):**
+```json
+{
+  "url": "https://public.blob.vercel-storage.com/example-4RdtBR8/image.png",
+  "pathname": "/example-4RdtBR8/image.png",
+  "contentType": "image/png",
+  "contentDisposition": "inline"
+}
+```
+
+**Example Response (Error):**
+```json
+{
+  "error": "No file provided"
+}
+```
+
+**Status Codes:**
+- **200 OK**: File uploaded successfully
+- **400 Bad Request**: No file provided or invalid file
+- **500 Internal Server Error**: Server encountered an error during upload
+
+---
+
+## 🔄 API Request/Response Flow
+
+All API endpoints in the SVYP application follow a consistent pattern:
+
+1. **Authentication Check**: Most endpoints verify the user's authentication status via session cookies
+2. **Authorization Check**: Protected endpoints verify the user has the appropriate role
+3. **Input Validation**: Request parameters are validated for presence and correctness
+4. **Business Logic**: The core functionality is executed
+5. **Response Formation**: A structured JSON response is returned
+6. **Error Handling**: Errors are caught and returned with appropriate status codes
+
+## 🛡️ Security Considerations
+
+- All authenticated endpoints require a valid session cookie
+- Role-based access control restricts admin functionality
+- Super-admin actions are limited to users with super-admin role
+- Firebase Authentication and Firebase Admin SDK handle secure user management
+- Session cookies are HTTP-only and secure (in production)
+- Error responses do not leak sensitive information

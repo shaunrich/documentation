@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "SVYP Documentation",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
@@ -11,45 +11,86 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Docs",
         "groups": [
           {
-            "group": "Get Started",
+            "group": "Overview",
             "pages": [
-              "introduction",
-              "quickstart",
-              "development"
+              "start",
+              "application-overview",
+              "application-summary"
+            ]
+          },
+          
+          {
+            "group": "Development",
+            "pages": [
+              "development-practices-guide",
+              "linting-and-formatting",
+              "deployment",
+              "performance",
+              "tactical-patterns-guide"
             ]
           },
           {
-            "group": "Essentials",
+            "group": "Integration",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/settings",
-              "essentials/navigation",
-              "essentials/reusable-snippets"
+              "firebase-integration",
+              "vercel-blob-setup",
+              "husky-setup",
+              "husky-quick-reference"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features-reference",
+              "swipe-speed-limiter",
+              "rewards-system"
             ]
           }
         ]
       },
       {
-        "tab": "API Reference",
+        "tab": "API",
         "groups": [
           {
             "group": "API Documentation",
             "pages": [
-              "api-reference/introduction"
+              "api-documentation"
             ]
           },
           {
             "group": "Endpoint Examples",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/endpoint-examples"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Administration",
+        "groups": [
+          {
+            "group": "User Management",
+            "pages": [
+              "user-management",
+              "admin-user-roles",
+              "user-brand-linking"
+            ]
+          },
+          {
+            "group": "Campaign Management",
+            "pages": [
+              "campaign-management",
+              "brand-campaign-management",
+              "product-campaign-brand-relationships"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "analytics"
             ]
           }
         ]
@@ -58,18 +99,18 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
+          "anchor": "Demo",
+          "href": "https://svyp.vercel.app/",
           "icon": "book-open-cover"
         },
         {
           "anchor": "Community",
-          "href": "https://mintlify.com/community",
+          "href": "https://platform45.slack.com",
           "icon": "slack"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
+          "anchor": "Platform45",
+          "href": "https://platform45.com",
           "icon": "newspaper"
         }
       ]
@@ -83,7 +124,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:hi@platform45.com"
       }
     ],
     "primary": {
@@ -94,9 +135,8 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/platform45"
+      
     }
   }
 }

@@ -1,0 +1,113 @@
+---
+title: "Admin User Roles"
+description: "The SVYP platform implements a role-based access control system for admin users. This document outlines the different roles, their permissions, and..."
+---
+
+# Admin User Roles Documentation
+
+## Overview
+
+The SVYP platform implements a role-based access control system for admin users. This document outlines the different roles, their permissions, and how to manage them.
+
+## Role Types
+
+The system supports two admin role types:
+
+1. **Super Admin** (`super-admin`)
+   - Full access to all admin functionalities
+   - Can create, update, and delete other admin users
+   - Can assign and modify roles for other users
+   - Can perform all administrative actions
+
+2. **Admin** (`admin`)
+   - Limited administrative access
+   - Can view all admin users
+   - Can reset passwords for users
+   - Can enable/disable users
+   - Cannot create new admin users or modify roles
+
+## Implementation Details
+
+### Technical Architecture
+
+The role-based access control is implemented using Firebase Authentication's custom claims:
+
+- User roles are stored as custom claims in Firebase Authentication
+- The `role` claim can be either `super-admin` or `admin`
+- API routes verify the user's role before allowing access to protected operations
+- The frontend UI conditionally renders admin actions based on the user's role
+
+### Key Components
+
+1. **User Interface**
+   - The User Management page (`/admin/users`) displays all admin users
+   - Role-specific actions are conditionally rendered based on the current user's role
+   - Super admins see additional options like "Add User", "Update Role", and "Delete"
+
+2. **API Routes**
+   - `/api/users` - GET (list users), POST (create user)
+   - `/api/users/[uid]` - DELETE (delete user), PATCH (update user)
+   - All routes implement role verification middleware
+
+3. **Firebase Admin SDK**
+   - Custom utility functions in `firebase-admin.ts` handle role management
+   - `getAllUsers()` - Retrieves all users with their roles
+   - `createUser()` - Creates a new user with an optional role
+   - `updateUserRole()` - Updates a user's role
+
+## Setting Up Admin Users
+
+### Initial Setup
+
+To set up the first super-admin user:
+
+1. Create a regular user through Firebase Authentication
+2. Run the `setup-admin.ts` script to grant super-admin privileges:
+   ```bash
+   npm run setup-admin
+   ```
+
+### Creating Additional Admin Users
+
+Once you have a super-admin user:
+
+1. Log in as the super-admin
+2. Navigate to the User Management page (`/admin/users`)
+3. Click "Add User" and fill in the user details
+4. Select the appropriate role (admin or super-admin)
+5. Click "Add User" to create the new admin user
+
+### Updating User Roles
+
+To change a user's role:
+
+1. Log in as a super-admin
+2. Navigate to the User Management page
+3. Find the user you want to update
+4. Click "Update Role" in the Actions column
+5. Select the new role in the modal dialog
+6. Click "Update Role" to save the changes
+
+## Security Considerations
+
+- Only super-admins can create new admin users or modify roles
+- All role-based permissions are enforced on both the client and server sides
+- Session cookies are used for authentication and must be included in all API requests
+- Custom claims are verified on the server for each protected operation
+
+## Troubleshooting
+
+### Common Issues
+
+1. **401 Unauthorized Error**
+   - Ensure the user has the correct role assigned
+   - Verify that session cookies are being included in API requests (`credentials: 'include'`)
+   - Check that the Firebase service account key is correctly configured
+
+2. **Missing Admin Actions**
+   - Confirm the user has the super-admin role
+   - Try logging out and logging back in to refresh the token
+
+3. **Cannot Create Users**
+   - Verify Firebase Authentication settings allow email/password sign-up
+   - Ensure the user making the request has super-admin privileges

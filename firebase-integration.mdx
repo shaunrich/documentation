@@ -1,0 +1,129 @@
+---
+title: "Firebase Integration"
+description: "This document explains how Firebase is integrated and used in the project."
+---
+
+# Firebase Integration
+
+This document explains how Firebase is integrated and used in the project.
+
+## Configuration
+
+The project uses Firebase for data storage and retrieval. The configuration is managed through environment variables for security. The following environment variables need to be set in your `.env.local` file:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
+
+## Authentication
+
+The project uses Firebase Authentication for admin access. To set up authentication:
+
+1. Go to the Firebase Console
+2. Enable Email/Password authentication in the Authentication section
+3. Create an admin user with email and password
+4. Use these credentials to access the admin dashboard at `/admin`
+
+## Data Structure
+
+### Products Collection
+
+The application uses a `products` collection in Firestore with the following structure:
+
+```typescript
+interface Product {
+  id: string;         // Document ID
+  name: string;       // Product name
+  description: string;// Product description
+  price: number;      // Product price
+  imageUrl: string;   // URL to product image
+  likes: number;      // Number of likes
+  dislikes: number;   // Number of dislikes
+}
+```
+
+## Available Functions
+
+### Authentication Functions
+
+```typescript
+loginWithEmail(email: string, password: string): Promise<User>
+logoutUser(): Promise<void>
+```
+
+This function logs in a user with the provided email and password. It:
+1. Connects to the Firebase Authentication service
+2. Attempts to log in the user
+3. Returns a User object if successful
+
+This function logs out the current user. It:
+1. Connects to the Firebase Authentication service
+2. Attempts to log out the user
+3. Returns a void promise if successful
+
+Example usage:
+```typescript
+import { loginWithEmail, logoutUser } from '@/utils/firebase';
+
+const user = await loginWithEmail('user@example.com', 'password');
+await logoutUser();
+```
+
+### Product Functions
+
+```typescript
+fetchProducts(): Promise<Product[]>
+createProduct(product: Omit<Product, 'id'>): Promise<Product>
+updateProduct(id: string, product: Partial<Product>): Promise<Product>
+deleteProduct(id: string): Promise<void>
+```
+
+This function retrieves all products from the Firestore database. It:
+1. Connects to the 'products' collection
+2. Fetches all documents
+3. Maps the documents to Product objects
+4. Returns an array of Products
+
+This function creates a new product in the Firestore database. It:
+1. Connects to the 'products' collection
+2. Creates a new document with the provided product data
+3. Returns the newly created Product object
+
+This function updates an existing product in the Firestore database. It:
+1. Connects to the 'products' collection
+2. Updates the document with the provided product ID and data
+3. Returns the updated Product object
+
+This function deletes a product from the Firestore database. It:
+1. Connects to the 'products' collection
+2. Deletes the document with the provided product ID
+3. Returns a void promise if successful
+
+Example usage:
+```typescript
+import { fetchProducts, createProduct, updateProduct, deleteProduct } from '@/utils/firebase';
+
+const products = await fetchProducts();
+const newProduct = await createProduct({ name: 'New Product', price: 9.99 });
+const updatedProduct = await updateProduct('product-id', { name: 'Updated Product' });
+await deleteProduct('product-id');
+```
+
+## Best Practices
+
+1. **Environment Variables**: Never commit the actual Firebase configuration values to version control. Always use environment variables.
+2. **Error Handling**: All Firebase operations include try-catch blocks to handle potential errors gracefully.
+3. **Types**: Use TypeScript interfaces (like `Product`) to ensure type safety when working with Firebase data.
+
+## Setting Up Firebase
+
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Copy your Firebase configuration from the project settings
+3. Create a `.env.local` file in the project root
+4. Add your Firebase configuration values to the environment variables
+5. Restart your development server to apply the changes

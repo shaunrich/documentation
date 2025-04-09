@@ -1,0 +1,507 @@
+---
+title: "Development Practices Guide"
+description: "Best practices and architectural guidelines for SVYP development"
+---
+
+# 🧰 SVYP Development Practices Guide
+
+## 🏗️ Architecture
+
+### 📐 Architectural Pattern
+The SVYP application follows a **Component-Based Architecture** with a **Repository Pattern** for data access. This combines elements of:
+
+- **Next.js App Router Pattern**: Leveraging Next.js App Router for routing and page organisation
+- **Presentation-Domain-Data** layering: Separation of UI components, domain logic, and data access
+- **Repository Pattern**: Abstracting data source interactions behind consistent interfaces
+
+The architecture emphasises a clear separation of concerns, with React components handling the presentation layer, TypeScript interfaces defining the domain model, and Firebase utilities implementing the data access layer.
+
+### 📂 Directory Structure
+
+```
+src/
+├── app/                 # Next.js App Router pages and routes
+│   ├── [slug]/          # Dynamic routes for brand pages
+│   ├── admin/           # Admin dashboard and management interfaces
+│   └── api/             # API routes for server-side operations
+├── components/          # Reusable UI components
+├── contexts/            # React Context providers for state management
+├── data/                # Data source configurations
+├── hooks/               # Custom React hooks for shared behaviour
+├── lib/                 # Shared libraries and utilities
+├── middleware.ts        # Next.js middleware for route protection
+├── types/               # TypeScript interfaces defining domain model
+└── utils/               # Utility functions including Firebase access
+```
+
+### 🔄 Component Interactions
+
+1. **Presentation Layer** (app/, components/)
+   - React components render the UI and manage local state
+   - Pages in the app directory define routes and layout structure
+   - Components communicate with the domain layer via hooks and contexts
+
+2. **Domain Layer** (hooks/, contexts/, types/)
+   - Custom hooks encapsulate domain logic and data access
+   - Context providers manage global application state
+   - TypeScript interfaces define the domain model and type constraints
+
+3. **Data Access Layer** (utils/, lib/)
+   - Firebase utilities handle interactions with Firestore
+   - Repository-style functions abstract data source operations
+   - Adapters convert between domain models and data source formats
+
+### 🖥️ Presentation Layer Frameworks
+
+- **React 18.2.0**: Functional components with hooks for state management
+- **Next.js 15.2.3**: App Router for page routing and server components
+- **Tailwind CSS 4**: Utility-first CSS framework for styling
+- **Tremor**: Data visualisation components for analytics
+- **Framer Motion**: Animation library for smooth transitions
+- **Swiper**: Touch-enabled carousel component for product browsing
+
+## 🧩 Core Domain Concepts
+
+### 📊 Primary Domain Entities
+
+1. **Brand**
+   - The top-level organisational entity in the platform hierarchy
+   - Represents a company or organisation with marketing campaigns
+   - Contains branding elements including logo and theme colours
+
+2. **Campaign**
+   - Middle-level entity belonging to a specific brand
+   - Groups related products for targeted marketing
+   - Contains references to associated products
+
+3. **Product**
+   - Bottom-level entity that can be associated with brands and campaigns
+   - Represents a physical or digital item being marketed
+   - Contains details like name, description, price, and imagery
+
+4. **AdminUser**
+   - User with administrative access to the platform
+   - Associated with specific role-based permissions
+   - Can be linked to specific brands for limited access
+
+5. **Reward**
+   - Incentives offered to end users for engagement
+   - Associated with specific brands for brand-specific rewards
+   - Contains usage limits and activation constraints
+
+### 🔄 Entity Relationships
+
+```
+Brand (1) ---> (*) Campaign
+  |
+  |--> (*) Product
+  |
+  |--> (*) Reward
+  |
+  |--> (*) AdminUser
+
+Campaign (*) ---> (*) Product (many-to-many)
+```
+
+- **Brand to Campaign**: One-to-many relationship. A brand can have multiple campaigns, and each campaign belongs to exactly one brand.
+- **Brand to Product**: One-to-many relationship. Products can optionally be associated with a specific brand.
+- **Campaign to Product**: Many-to-many relationship. Products can appear in multiple campaigns, and campaigns can contain multiple products.
+- **Brand to Reward**: One-to-many relationship. Rewards are associated with specific brands.
+- **Brand to AdminUser**: Many-to-many relationship. Admin users can be associated with specific brands for access control.
+
+### 🧮 Entity Attributes
+
+#### Brand
+
+```typescript
+interface Brand {
+  id: string;         // Unique identifier
+  name: string;       // Brand name
+  logoUrl: string;    // URL to brand logo image
+  slug: string;       // URL-friendly identifier
+  createdAt: number;  // Creation timestamp
+  updatedAt: number;  // Last update timestamp
+  theme?: BrandTheme; // Optional brand theme colours
+}
+
+interface BrandTheme {
+  primary: string;    // Primary brand colour
+  background: string; // Background colour
+  reward: string;     // Reward highlight colour
+}
+```
+
+#### Campaign
+
+```typescript
+interface Campaign {
+  id: string;                        // Unique identifier
+  name: string;                      // Campaign name
+  slug: string;                      // URL-friendly identifier
+  brandId: string;                   // Reference to parent brand
+  productIds: string[];              // Array of product references
+  createdAt: number;                 // Creation timestamp
+  updatedAt: number;                 // Last update timestamp
+  themeOverrides?: Partial<BrandTheme>; // Optional theme overrides
+}
+```
+
+#### Product
+
+```typescript
+interface Product {
+  id: string;            // Unique identifier
+  name: string;          // Product name
+  description?: string;  // Optional product description
+  price: number;         // Product price
+  imageUrl: string;      // URL to product image
+  brandId?: string;      // Optional reference to parent brand
+  affiliateUrl?: string; // Optional URL for product purchase
+}
+```
+
+#### AdminUser
+
+```typescript
+interface AdminUser {
+  uid: string;            // Firebase Auth user ID
+  email: string;          // User email address
+  displayName?: string;   // Optional display name
+  createdAt?: number;     // Account creation timestamp
+  lastLoginAt?: number;   // Last login timestamp
+  disabled?: boolean;     // Account status
+  role?: 'super-admin' | 'admin'; // User role
+  brandIds?: string[];    // Brands this user can manage
+}
+```
+
+### 🔍 Domain Scoping
+
+- **By Brand**: Most entities are scoped to specific brands, creating natural partitioning
+- **By Role**: Admin access is scoped by role and brand associations
+- **By Campaign**: Products are grouped and presented within campaign contexts
+- **By URL Structure**: The URL pattern `/{brandSlug}/{campaignSlug}` reflects the hierarchical structure
+
+## 👨‍💻 Development Practices
+
+### 🧪 Testing
+
+Based on the codebase analysis, here are the recommended testing practices for SVYP:
+
+#### Testing Framework
+
+- **Jest**: Recommended as the primary testing framework
+- **React Testing Library**: For component testing with a focus on user interactions
+- **Cypress**: For end-to-end testing of key user flows
+
+#### Naming Conventions
+
+- Test files should follow the pattern `[filename].(test|spec).(ts|tsx)`
+- Test suites should describe the component or function being tested: `describe('ComponentName', () => {...})`
+- Test cases should use plain language describing expected behaviour: `it('should render product details when provided', () => {...})`
+
+#### Special Assertions
+
+- Use custom matchers for Firebase interactions
+- Implement snapshot testing for UI components with stable renders
+- Use data-testid attributes for targeting elements in component tests
+
+```tsx
+// Example component with test attribute
+export const ProductCard = ({ product }: { product: Product }) => (
+  <div data-testid="product-card">
+    <h3 data-testid="product-name">{product.name}</h3>
+    <p data-testid="product-price">{product.price}</p>
+  </div>
+);
+
+// Example test
+it('should display product name and price', () => {
+  render(<ProductCard product={mockProduct} />);
+  expect(screen.getByTestId('product-name')).toHaveTextContent(mockProduct.name);
+  expect(screen.getByTestId('product-price')).toHaveTextContent(mockProduct.price.toString());
+});
+```
+
+### 🧮 Test Organisation
+
+#### Test Isolation
+
+- Each test should be independent and not rely on the state from other tests
+- Use `beforeEach` to set up test environment and `afterEach` to clean up
+- Mock external services like Firebase to avoid production data access
+
+```typescript
+describe('ProductRepository', () => {
+  beforeEach(() => {
+    // Set up Firebase mock
+    mockFirestore();
+  });
+
+  afterEach(() => {
+    // Clean up mocks
+    jest.resetAllMocks();
+  });
+
+  it('should fetch products successfully', async () => {
+    // Test implementation
+  });
+});
+```
+
+#### Test Data & Mocking
+
+- Use factory functions to create test data (see Test Factories section)
+- Mock Firebase using Jest mock functions
+- Use MSW (Mock Service Worker) for intercepting and mocking API requests
+
+```typescript
+// Mocking Firebase Firestore
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(),
+  collection: jest.fn(),
+  getDocs: jest.fn().mockResolvedValue({
+    docs: [
+      {
+        id: 'mock-id',
+        data: () => ({ name: 'Mock Product', price: 9.99 }),
+      },
+    ],
+  }),
+}));
+```
+
+#### Testing Helpers
+
+Create dedicated test helpers for common testing tasks:
+
+```typescript
+// helpers/test-utils.ts
+import { render, RenderOptions } from '@testing-library/react';
+import { ReactElement } from 'react';
+
+// Custom render function that includes providers
+const customRender = (
+  ui: ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>
+) => {
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <MockFirebaseProvider>
+        {children}
+      </MockFirebaseProvider>
+    ),
+    ...options,
+  });
+};
+
+// Re-export everything from testing-library
+export * from '@testing-library/react';
+export { customRender as render };
+```
+
+#### Database Testing
+
+- Create a separate Firebase project for testing
+- Use emulators for Firestore and Authentication during tests
+- Seed test data before running tests and clean up afterwards
+
+```typescript
+// Set up Firebase emulator connection
+import { connectFirestoreEmulator } from 'firebase/firestore';
+
+beforeAll(() => {
+  const db = getFirestore();
+  connectFirestoreEmulator(db, 'localhost', 8080);
+});
+```
+
+### 🏭 Test Factories and Doubles
+
+#### Test Data Factories
+
+Create factory functions for generating test entities with sensible defaults:
+
+```typescript
+// factories/brand.factory.ts
+import { Brand, BrandTheme } from '../types/brand';
+
+export const createMockBrandTheme = (overrides?: Partial<BrandTheme>): BrandTheme => ({
+  primary: '#FF0000',
+  background: '#FFFFFF',
+  reward: '#00FF00',
+  ...overrides,
+});
+
+export const createMockBrand = (overrides?: Partial<Brand>): Brand => ({
+  id: `brand-${Math.random().toString(36).substring(2, 9)}`,
+  name: 'Test Brand',
+  logoUrl: 'https://example.com/logo.png',
+  slug: 'test-brand',
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  theme: createMockBrandTheme(),
+  ...overrides,
+});
+```
+
+#### Test Doubles
+
+Implement test doubles for Firebase and other external services:
+
+```typescript
+// doubles/firebase.double.ts
+import { Product } from '../types/product';
+
+export class FirestoreDouble {
+  private products: Record<string, Product> = {};
+
+  async fetchProducts(): Promise<Product[]> {
+    return Object.values(this.products);
+  }
+
+  async createProduct(product: Omit<Product, 'id'>): Promise<Product> {
+    const id = `product-${Math.random().toString(36).substring(2, 9)}`;
+    const newProduct = { id, ...product };
+    this.products[id] = newProduct;
+    return newProduct;
+  }
+
+  async clearProducts(): Promise<void> {
+    this.products = {};
+  }
+}
+```
+
+### 📚 Repository Testing
+
+#### Best Practices
+
+- Test each repository method in isolation
+- Verify that the correct Firestore methods are called with expected parameters
+- Test both success and error scenarios
+- Ensure that returned data is correctly transformed to domain models
+
+```typescript
+// Example repository test
+describe('fetchProducts', () => {
+  it('should return all products', async () => {
+    // Arrange
+    const mockProducts = [createMockProduct(), createMockProduct()];
+    mockFirestoreQuerySnapshot(mockProducts);
+
+    // Act
+    const result = await fetchProducts();
+
+    // Assert
+    expect(collection).toHaveBeenCalledWith(expect.anything(), 'products');
+    expect(getDocs).toHaveBeenCalled();
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe(mockProducts[0].id);
+  });
+
+  it('should handle errors gracefully', async () => {
+    // Arrange
+    mockFirestoreError('Failed to fetch products');
+
+    // Act & Assert
+    await expect(fetchProducts()).rejects.toThrow('Failed to fetch products');
+  });
+});
+```
+
+#### Error Handling Patterns
+
+- Use try/catch blocks in all repository methods
+- Log errors with meaningful context
+- Return typed error objects or reject promises with specific error types
+
+```typescript
+export const fetchProducts = async (): Promise<Product[]> => {
+  try {
+    // Implementation
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw new Error('Failed to fetch products: ' + error.message);
+  }
+};
+```
+
+#### Naming Conventions
+
+Repository methods should follow clear naming patterns:
+
+- `fetch*`: For retrieving data (e.g., `fetchProducts`, `fetchBrandById`)
+- `create*`: For creating new entities (e.g., `createProduct`)
+- `update*`: For modifying existing entities (e.g., `updateBrand`)
+- `delete*`: For removing entities (e.g., `deleteCampaign`)
+- `*By*`: For query specificity (e.g., `fetchCampaignBySlug`)
+
+## ⚙️ Configuration
+
+### 📦 Dependency Management
+
+- Dependencies are managed through `package.json`
+- Firebase and other service configurations are loaded from environment variables
+- Runtime dependencies are controlled through dependency injection patterns
+
+```typescript
+// Example of dependency injection pattern
+export const createFirebaseServices = (config = defaultConfig) => {
+  const app = initializeApp(config);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  
+  return {
+    app,
+    db,
+    auth,
+    // Repository functions using these instances
+    products: createProductRepository(db),
+    campaigns: createCampaignRepository(db),
+    brands: createBrandRepository(db),
+  };
+};
+```
+
+### 🧱 Separation of Concerns
+
+- **Presentation** (components, pages): Responsible for UI rendering and user interaction
+- **Application** (hooks, contexts): Manages application state and coordinates between UI and data
+- **Domain** (types): Defines the core business entities and rules
+- **Infrastructure** (utils, lib): Handles external service communication and technical concerns
+
+### 🔑 Access Restrictions
+
+- Maintain clean imports that respect the layering (don't import up the dependency chain)
+- Avoid direct Firebase access from components; use hooks or contexts instead
+- Keep authentication and authorisation logic centralized in middleware and hooks
+- Use TypeScript's access modifiers (private, protected) for class-based utilities
+
+```typescript
+// Example of clean imports and layer separation
+// Component (Presentation layer)
+import { useProducts } from '@/hooks/useProducts'; // Application layer
+import { Product } from '@/types/product'; // Domain layer
+
+export const ProductList = () => {
+  const { products, loading, error } = useProducts();
+  // Component implementation
+};
+
+// Hook (Application layer)
+import { useState, useEffect } from 'react';
+import { fetchProducts } from '@/utils/firebase'; // Infrastructure layer
+import { Product } from '@/types/product'; // Domain layer
+
+export const useProducts = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  // Hook implementation
+};
+```
+
+## 📝 Conclusion
+
+This development practices guide outlines the architectural patterns, domain concepts, testing strategies, and configuration approaches for the SVYP platform. By following these guidelines, developers can maintain consistency, improve code quality, and work more effectively within the established project structure.
+
+Remember that these practices should evolve with the project, and continuous improvement through code reviews and team discussions is essential for maintaining high-quality code.

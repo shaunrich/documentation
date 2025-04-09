@@ -1,0 +1,104 @@
+---
+title: "Husky Setup"
+description: "This document explains the Git hooks setup using Husky in the SVYP project."
+---
+
+# Husky Git Hooks Setup
+
+This document explains the Git hooks setup using Husky in the SVYP project.
+
+## Overview
+
+We use [Husky](https://typicode.github.io/husky/) to manage Git hooks, which help enforce code quality standards before code is committed to the repository. This ensures that all code in the repository meets our quality standards.
+
+## Pre-commit Hook
+
+The pre-commit hook runs automatically when you attempt to commit changes. It performs the following checks:
+
+- Lints JavaScript and TypeScript files with ESLint
+- Formats code with Prettier
+- Ensures consistent code style across the project
+
+### What Files Are Checked?
+
+The pre-commit hook only checks files that are staged for commit (using [lint-staged](https://github.com/okonet/lint-staged)), which makes the process faster and more focused.
+
+- **JavaScript/TypeScript files** (`.js`, `.jsx`, `.ts`, `.tsx`):
+
+  - ESLint for code quality
+  - Prettier for consistent formatting
+
+- **JSON and Markdown files** (`.json`, `.md`):
+  - Prettier for consistent formatting
+
+## Configuration Files
+
+The setup includes the following configuration files:
+
+- `.husky/pre-commit`: The pre-commit hook script
+- `package.json`: Contains the lint-staged configuration
+- `.prettierrc`: Prettier configuration for code formatting
+- `.prettierignore`: Files excluded from Prettier formatting
+
+## How to Use
+
+### Normal Workflow
+
+Simply stage your changes and commit as usual:
+
+```bash
+git add .
+git commit -m "Your commit message"
+```
+
+The pre-commit hook will automatically run and check your code. If there are any issues:
+
+1. The commit will be aborted
+2. You'll see error messages explaining what needs to be fixed
+3. Fix the issues and try committing again
+
+### Bypassing Hooks (Emergency Only)
+
+In rare emergency situations, you can bypass the hooks:
+
+```bash
+git commit --no-verify -m "Emergency fix"
+```
+
+**Note**: Use this sparingly and only in genuine emergencies. The team should be notified when hooks are bypassed.
+
+## Troubleshooting
+
+### Hook Not Running
+
+If the hook isn't running, check that:
+
+1. Husky is properly installed: `npm list husky`
+2. The hook file is executable: `ls -la .husky/pre-commit`
+3. Git hooks are enabled: `git config core.hooksPath`
+
+### ESLint or Prettier Errors
+
+If you're getting errors:
+
+1. Run ESLint manually to see detailed errors: `npx eslint src/path/to/file.ts`
+2. Run Prettier manually: `npx prettier --write src/path/to/file.ts`
+3. Consider using editor extensions for ESLint and Prettier to catch issues while coding
+
+## Adding New Hooks
+
+To add a new Git hook:
+
+1. Create a new file in the `.husky` directory (e.g., `.husky/pre-push`)
+2. Make it executable: `chmod +x .husky/pre-push`
+3. Add your commands to the file
+
+## Maintenance
+
+The Husky setup is maintained through:
+
+- `package.json` dependencies
+- The `.husky` directory
+- Configuration files (`.prettierrc`, etc.)
+
+When updating dependencies, ensure Husky and lint-staged are kept up to date.

@@ -1,0 +1,97 @@
+---
+title: "Husky Quick Reference"
+description: "When you run git commit, the following checks are performed automatically:"
+---
+
+# Husky Quick Reference Guide
+
+## What Happens When You Commit
+
+When you run `git commit`, the following checks are performed automatically:
+
+1. **For JavaScript/TypeScript files** (`.js`, `.jsx`, `.ts`, `.tsx`):
+
+   - ESLint checks for code quality issues
+   - Prettier formats the code consistently
+
+2. **For JSON and Markdown files** (`.json`, `.md`):
+   - Prettier formats the files consistently
+
+## Common Commands
+
+### Normal Workflow
+
+```bash
+# Stage and commit as usual - hooks run automatically
+git add .
+git commit -m "Your commit message"
+```
+
+### Fix Formatting Issues Manually
+
+```bash
+# Format all files in the project
+npx prettier --write .
+
+# Format specific files
+npx prettier --write src/components/ProductCard.tsx
+```
+
+### Run ESLint Manually
+
+```bash
+# Lint all files
+npx eslint .
+
+# Lint and fix issues
+npx eslint --fix .
+
+# Lint specific files
+npx eslint src/components/ProductCard.tsx
+```
+
+### Skip Hooks (Emergency Only)
+
+```bash
+# Only use in genuine emergencies
+git commit --no-verify -m "Emergency fix"
+```
+
+## Troubleshooting
+
+### "Command not found" Errors
+
+If you see errors about commands not being found:
+
+```bash
+# Reinstall dependencies
+npm install
+```
+
+### ESLint or Prettier Configuration Issues
+
+If you're having configuration conflicts:
+
+```bash
+# Check ESLint configuration
+npx eslint --print-config src/components/ProductCard.tsx
+
+# Check Prettier configuration
+npx prettier --config-precedence file-override --find-config-path src/components/ProductCard.tsx
+```
+
+## Editor Integration
+
+For the best development experience, install ESLint and Prettier extensions for your editor:
+
+- **VS Code**:
+
+  - ESLint: [dbaeumer.vscode-eslint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
+  - Prettier: [esbenp.prettier-vscode](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+
+- **WebStorm/IntelliJ**:
+
+  - Enable ESLint and Prettier in Settings → Languages & Frameworks
+
+- **Vim/Neovim**:
+  - Use ALE or CoC with ESLint and Prettier plugins

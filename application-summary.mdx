@@ -1,0 +1,103 @@
+---
+title: "Application Summary"
+description: "SVYP is a Next.js application that manages a hierarchical relationship between brands, campaigns, and products. The platform allows for the creatio..."
+---
+
+# 📊 SVYP Repository Analysis
+
+## 🔍 Project Overview
+SVYP is a Next.js application that manages a hierarchical relationship between brands, campaigns, and products. The platform allows for the creation, management, and presentation of branded marketing campaigns and their associated products.
+
+## 🛠️ Technical Architecture
+
+### 🧩 Core Framework
+- **Next.js 15.2.3** with TypeScript 5
+- **React 18.2.0** with client-side components
+- **TurboRepak** enabled for development
+
+### 💾 Data Management
+- **Firebase** for authentication and data storage
+- **Firestore** collections for brands, campaigns, and products
+- **Role-based access control** with admin and super-admin roles
+
+### 🎨 UI/UX Components
+- **Tailwind CSS 4** for styling
+- **Tremor** for data visualisation components
+- **Framer Motion** for animations
+- **Swiper** for carousel/swipe functionality
+- **Lucide React** for icons
+
+### 📊 Analytics & Notifications
+- **Mixpanel** for user analytics tracking
+- **Postmark** likely used for email notifications
+
+## 📁 Project Structure
+The repository follows a typical Next.js App Router structure:
+
+```
+src/
+├── app/                 # Main application routes and pages
+├── components/          # Reusable UI components
+├── contexts/            # React context providers
+├── data/                # Data-related utilities
+├── hooks/               # Custom React hooks
+├── lib/                 # Library code and integrations
+├── middleware.ts        # Next.js middleware for auth protection
+├── types/               # TypeScript type definitions
+└── utils/               # Utility functions including Firebase
+```
+
+## 🔐 Authentication & Authorisation
+- Authentication is implemented using Firebase Auth
+- Protected admin routes with middleware validation
+- Session-based authentication with cookies
+- Role-based access control with admin and super-admin roles
+
+## 🏗️ Data Model Hierarchy
+1. **Brands** (top level)
+   - Contain multiple campaigns
+   - Have a unique slug, name, and logo
+   
+2. **Campaigns** (middle level)
+   - Belong to a specific brand via `brandId`
+   - Group related products for targeted marketing
+   - Have references to multiple products via `productIds`
+   
+3. **Products** (bottom level)
+   - Can be associated with a specific brand
+   - Can appear in multiple campaigns
+   - Contain details like name, description, price, and image
+
+## 🧩 Key Features
+
+### 📱 User-facing
+- Interactive product browsing through campaigns
+- Brand and campaign organisation
+- Product display with images and details
+- URL structure that reflects the brand-campaign relationship
+
+### ⚙️ Admin Dashboard
+- Admin interface at `/admin` route
+- Role-based permissions (super-admin and admin)
+- Brand, campaign, and product management
+- User management for admin users
+
+## 🚀 Development & Deployment
+- **Husky** for Git hooks and code quality enforcement
+- **ESLint** and **Prettier** for code quality and formatting
+- **Vercel** deployment with GitHub Actions integration
+- Environment variable management for configuration
+
+## 🔧 Infrastructure
+- **Firebase** project for authentication and data storage
+- **Vercel Blob** for asset storage
+- **Vercel** for hosting and deployment
+
+## 🔍 Additional Components
+- **Swipe speed limiter** functionality
+- **Rewards system** for user engagement
+- **Analytics integration** for tracking user behaviour
+- **Custom image handling** via `SafeImage` component
+
+## 📝 Conclusion
+SVYP is a well-structured Next.js application with a clear separation of concerns and a focus on maintainable, type-safe code. The project uses modern React patterns and integrates effectively with Firebase for data management and authentication. The hierarchical data model provides flexibility for managing various brands, campaigns, and products within a unified platform.

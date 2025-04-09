@@ -1,0 +1,92 @@
+---
+title: "Swipe Speed Limiter"
+description: "The Swipe Speed Limiter is a feature designed to prevent users from rapidly swiping through products without properly evaluating them. This documen..."
+---
+
+# Swipe Speed Limiter Documentation
+
+## Overview
+
+The Swipe Speed Limiter is a feature designed to prevent users from rapidly swiping through products without properly evaluating them. This documentation explains how the feature works, how to configure it, and its impact on user experience.
+
+## How It Works
+
+1. **Detection**: The system tracks the time between consecutive swipes. If a user swipes faster than the configured threshold for a specified number of consecutive swipes, the system identifies this as "rapid swiping".
+
+2. **Warning**: When rapid swiping is detected, a warning dialog appears with a countdown timer.
+
+3. **Consequence**: After the countdown completes, the product stack is reset to the beginning, requiring the user to start evaluating products from the beginning.
+
+4. **Analytics**: Each rapid swiping event is tracked in Mixpanel with detailed information about the user, campaign, and swipe timing.
+
+## Configuration Settings
+
+Super administrators can configure the swipe speed limiter through the admin settings page at `/admin/settings`. The following settings are available:
+
+### Swipe Threshold (milliseconds)
+
+- **Description**: The minimum time (in milliseconds) that must elapse between swipes. If a user swipes faster than this threshold, it counts toward the rapid swiping detection.
+- **Default Value**: 500ms (0.50 seconds)
+- **Recommended Range**: 300ms - 1000ms
+- **Impact**:
+  - Lower values (e.g., 300ms) create a stricter limit, potentially catching more users
+  - Higher values (e.g., 1000ms) are more lenient, only catching extremely rapid swiping
+
+### Consecutive Swipes Threshold
+
+- **Description**: The number of consecutive rapid swipes required to trigger the warning and reset.
+- **Default Value**: 2 consecutive swipes
+- **Recommended Range**: 2-5 swipes
+- **Impact**:
+  - Lower values (e.g., 2) will trigger the warning more quickly
+  - Higher values (e.g., 5) give users more leeway before triggering the warning
+
+## Warning Dialog
+
+The warning dialog includes:
+
+- A clear message explaining that swiping too quickly is not allowed
+- Information that the product stack will be reset
+- A countdown timer showing the seconds remaining before reset
+- Visual styling to draw attention (amber/yellow warning colors)
+
+## Technical Implementation
+
+The swipe speed limiter is implemented across several components:
+
+1. **useSwipeTimer Hook**: Tracks swipe timing and detects rapid swiping
+2. **SwipeContainer**: Handles the UI and product stack reset
+3. **SlowDownDialog**: Displays the warning and countdown
+4. **Firebase Settings**: Stores configuration in Firestore under `settings/swipeSettings`
+
+## Analytics Integration
+
+Each rapid swiping event is tracked in Mixpanel with the following data:
+
+- `swipe_count`: Number of rapid swipes detected
+- `average_swipe_time_ms`: Average time between swipes
+- `swipe_durations_ms`: Array of individual swipe durations
+- `rapid_swipe_threshold_ms`: The threshold that was used
+- `campaign_id`, `campaign_name`, `campaign_slug`: Campaign information
+- `brand_id`, `brand_name`, `brand_slug`: Brand information
+- `user_email`: User's email (if available)
+- `timestamp`: When the event occurred
+
+## Best Practices
+
+1. **Monitor Analytics**: Regularly review Mixpanel data for rapid swiping events to identify patterns or problematic campaigns.
+
+2. **Adjust Gradually**: When changing settings, make small adjustments and monitor the impact before making further changes.
+
+3. **User Communication**: Consider adding educational elements to inform users about the importance of thoughtful product evaluation.
+
+4. **A/B Testing**: Consider testing different thresholds with different user segments to find the optimal balance.
+
+## Troubleshooting
+
+If users report issues with the swipe speed limiter:
+
+1. Check if the user appears in rapid swiping analytics
+2. Verify the current threshold settings
+3. Consider temporarily increasing thresholds if legitimate users are being affected
+4. Ensure the warning dialog is displaying correctly
